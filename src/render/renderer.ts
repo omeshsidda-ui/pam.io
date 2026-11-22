@@ -3,31 +3,57 @@ import type { World } from "../engine/world";
 import type { Snake } from "../types";
 import { playZoom } from "../engine/camera";
 import { width } from "../engine/physics";
-import { beads, orbs, crown, face, shadow } from "./spriteCache";
+import { beads, orbs, crown, face, shadow, marking } from "./spriteCache";
 import { lobby } from "./lobby";
 const canvas = document.querySelector<HTMLCanvasElement>("#arena")!,
   c = canvas.getContext("2d")!;
-const tile = document.createElement("canvas");
-tile.width = 288;
-tile.height = 166;
-const t = tile.getContext("2d")!;
-t.strokeStyle = "#35506b70";
-t.lineWidth = 1.6;
-for (let j = -1; j < 3; j++)
-  for (let i = -1; i < 5; i++) {
-    const x = i * 72,
-      y = j * 83 + (i % 2) * 41.5;
-    t.beginPath();
-    for (let k = 0; k <= 6; k++) {
-      const a = (k * Math.PI) / 3;
-      t.lineTo(x + 48 * Math.cos(a), y + 48 * Math.sin(a));
+function readColors() {
+  const style = getComputedStyle(document.documentElement);
+  const get = (role: string) => style.getPropertyValue("--" + role).trim();
+  return {
+    field: get("field"),
+    tile: get("tile"),
+    grid: get("grid"),
+    ink: get("ink"),
+    muted: get("muted"),
+    edge: get("edge"),
+    paper: get("paper"),
+    outside: get("outside"),
+    danger: get("danger"),
+    charge: get("charge"),
+    gold: get("gold"),
+  };
+}
+let colors = readColors();
+function floorPattern() {
+  const tile = document.createElement("canvas");
+  tile.width = 288;
+  tile.height = 166;
+  const t = tile.getContext("2d")!;
+  t.strokeStyle = colors.grid;
+  t.lineWidth = 1.1;
+  for (let j = -1; j < 3; j++)
+    for (let i = -1; i < 5; i++) {
+      const x = i * 72,
+        y = j * 83 + (i % 2) * 41.5;
+      t.beginPath();
+      for (let k = 0; k <= 6; k++) {
+        const a = (k * Math.PI) / 3;
+        t.lineTo(x + 48 * Math.cos(a), y + 48 * Math.sin(a));
+      }
+      t.fillStyle = (i + j) % 3 === 0 ? colors.tile : colors.field;
+      t.fill();
+      t.stroke();
     }
-    t.fillStyle = (i + j) % 3 === 0 ? "#1b3046" : "#192c41";
-    t.fill();
-    t.stroke();
-  }
-const pattern = c.createPattern(tile, "repeat")!;
-pattern.setTransform(new DOMMatrix().scale(0.5));
+  const floor = c.createPattern(tile, "repeat")!;
+  floor.setTransform(new DOMMatrix().scale(0.5));
+  return floor;
+}
+let pattern = floorPattern();
+window.addEventListener("pam-theme", () => {
+  colors = readColors();
+  pattern = floorPattern();
+});
 let zoom = 1,
   cx = 0,
   cy = 0,
@@ -92,7 +118,7 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
             );
             c.textAlign = "center";
             c.font = "600 12px Arial";
-            c.fillStyle = "#e9f1fa";
+            c.fillStyle = colors.ink;
             c.fillText(s.name, x, y - r - 9);
             if (leader)
               c.drawImage(crown, x - 15, y - r - (demo ? 31 : 48), 30, 30);
@@ -102,6 +128,22 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
       tailX = x;
       tailY = y;
     }
+  }
+  for (let i = 4; i < n - 5; i += 5) {
+    const p = s.body[i],
+      o = s.old[i],
+      x = o.x + (p.x - o.x) * f,
+      y = o.y + (p.y - o.y) * f;
+    if (!demo && !visible(x, y)) continue;
+    const ahead = s.body[i - 1];
+    marking(
+      c,
+      s.skin,
+      x,
+      y,
+      Math.atan2(ahead.y - p.y, ahead.x - p.x),
+      r * 0.87,
+    );
   }
 }
 export function draw(
@@ -153,23 +195,23 @@ export function draw(
   c.beginPath();
   c.rect(left - 14, top - 14, right - left + 28, bottom - top + 28);
   c.arc(0, 0, R, 0, Math.PI * 2);
-  c.fillStyle = "#210e1ee8";
+  c.fillStyle = colors.outside;
   c.fill("evenodd");
   c.beginPath();
   c.arc(0, 0, R - 46, 0, Math.PI * 2);
   c.lineWidth = 80;
-  c.strokeStyle = "#ff506523";
+  c.strokeStyle = colors.danger + "22";
   c.stroke();
   c.beginPath();
   c.arc(0, 0, R - 95, 0, Math.PI * 2);
   c.lineWidth = 3;
-  c.strokeStyle = "#ff9295aa";
+  c.strokeStyle = colors.danger + "99";
   c.setLineDash([14, 12]);
   c.stroke();
   c.setLineDash([]);
   c.beginPath();
   c.arc(0, 0, R, 0, 7);
-  c.strokeStyle = "#ff4558";
+  c.strokeStyle = colors.danger;
   c.lineWidth = 12;
   c.stroke();
   for (const p of world.food) {
@@ -181,14 +223,14 @@ export function draw(
   if (tr) {
     c.save();
     c.translate(tr.x, tr.y);
-    c.fillStyle = "#ff424b28";
-    c.strokeStyle = "white";
+    c.fillStyle = colors.charge + "23";
+    c.strokeStyle = colors.ink;
     c.lineWidth = 3;
     c.beginPath();
     c.arc(0, 0, 140, 0, 7);
     c.fill();
     c.stroke();
-    c.fillStyle = "#ff465566";
+    c.fillStyle = colors.charge + "64";
     c.beginPath();
     c.moveTo(0, 0);
     c.arc(
@@ -202,7 +244,7 @@ export function draw(
     c.fill();
     for (let i = 0; i < 4; i++) {
       c.rotate(Math.PI / 2);
-      c.fillStyle = "white";
+      c.fillStyle = colors.ink;
       c.fillRect(125, -2, 27, 4);
     }
     c.beginPath();
@@ -213,7 +255,7 @@ export function draw(
       -Math.PI / 2,
       -Math.PI / 2 + (Math.PI * 2 * tr.charge) / CHARGE_SECONDS,
     );
-    c.strokeStyle = "#ff4759";
+    c.strokeStyle = colors.charge;
     c.lineWidth = 10;
     c.stroke();
     c.textAlign = "center";
@@ -227,7 +269,7 @@ export function draw(
   for (const s of world.snakes) if (!s.dead) snake(s, f, s === lead);
   for (const p of world.particles) {
     if (p.life <= 0 || !visible(p.x, p.y)) continue;
-    c.fillStyle = p.color;
+    c.fillStyle = p.label ? colors.ink : p.color;
     c.globalAlpha = Math.min(1, p.life * 2);
     if (p.label) c.fillText(p.label, p.x, p.y);
     else c.fillRect(p.x, p.y, 4, 4);
@@ -241,20 +283,20 @@ export function draw(
   c.translate(mx, my);
   c.beginPath();
   c.arc(0, 0, radius, 0, Math.PI * 2);
-  c.fillStyle = "#101c30dc";
+  c.fillStyle = colors.paper + "ef";
   c.fill();
-  c.strokeStyle = "#ff8795";
+  c.strokeStyle = colors.danger;
   c.lineWidth = 1.5;
   c.stroke();
   for (const s of world.snakes) {
     if (s.dead || s === world.player || s === lead) continue;
-    c.fillStyle = "#7990a6";
+    c.fillStyle = colors.muted;
     c.beginPath();
     c.arc((s.x / R) * radius, (s.y / R) * radius, 1.2, 0, 7);
     c.fill();
   }
   if (tr) {
-    c.strokeStyle = "#ffd65b";
+    c.strokeStyle = colors.charge;
     c.beginPath();
     c.arc((tr.x / R) * radius, (tr.y / R) * radius, 3, 0, 7);
     c.stroke();
@@ -267,7 +309,7 @@ export function draw(
       10,
       10,
     );
-  c.fillStyle = "#fff";
+  c.fillStyle = colors.ink;
   c.beginPath();
   c.arc((cx / R) * radius, (cy / R) * radius, 3, 0, 7);
   c.fill();
@@ -275,7 +317,7 @@ export function draw(
   if (Math.hypot(cx, cy) > R - 330) {
     c.textAlign = "center";
     c.font = "bold 13px Arial";
-    c.fillStyle = "#ffb1b5";
+    c.fillStyle = colors.danger;
     c.fillText("ARENA EDGE", w / 2, h - 24);
   }
   function marker(x: number, y: number, bolt: boolean, label: string) {
@@ -295,11 +337,11 @@ export function draw(
       screenY = h - 112;
     c.save();
     c.translate(screenX, screenY);
-    c.fillStyle = "#101c30ed";
+    c.fillStyle = colors.paper;
     c.beginPath();
     c.arc(0, 0, 15, 0, Math.PI * 2);
     c.fill();
-    c.fillStyle = bolt ? "#89efff" : "#ffdc69";
+    c.fillStyle = bolt ? colors.charge : colors.gold;
     if (bolt) {
       c.font = "bold 20px Arial";
       c.textAlign = "center";
@@ -308,7 +350,7 @@ export function draw(
       c.drawImage(crown, -13, -13, 26, 26);
       c.textAlign = "center";
       c.font = "bold 11px Arial";
-      c.strokeStyle = "#0d182b";
+      c.strokeStyle = colors.paper;
       c.lineWidth = 3;
       c.strokeText(label, 0, 28);
       c.fillText(label, 0, 28);

@@ -35,25 +35,94 @@ export const beads = skins.map((s, i) =>
     }),
   ),
 );
+// Dorsal markings remain recognizable in both appearances and at small sizes.
+const markings = skins.map((s, i) =>
+  sprite(96, (c) => {
+    c.fillStyle = s[2] + "b3";
+    c.strokeStyle = s[2] + "ab";
+    c.lineWidth = 8;
+    c.lineCap = "round";
+    switch (i % 4) {
+      case 0:
+        c.beginPath();
+        c.moveTo(26, 18);
+        c.lineTo(60, 48);
+        c.lineTo(26, 78);
+        c.lineTo(40, 49);
+        c.closePath();
+        c.fill();
+        break;
+      case 1:
+        for (const [x, y, r] of [
+          [40, 33, 10],
+          [60, 56, 6],
+          [28, 64, 4],
+        ]) {
+          c.beginPath();
+          c.arc(x, y, r, 0, 7);
+          c.fill();
+        }
+        break;
+      case 2:
+        c.beginPath();
+        c.moveTo(32, 19);
+        c.quadraticCurveTo(60, 48, 32, 77);
+        c.stroke();
+        break;
+      case 3:
+        c.beginPath();
+        c.moveTo(23, 47);
+        c.lineTo(46, 27);
+        c.lineTo(72, 47);
+        c.lineTo(46, 66);
+        c.closePath();
+        c.fill();
+        break;
+    }
+  }),
+);
+export function marking(
+  c: CanvasRenderingContext2D,
+  skin: number,
+  x: number,
+  y: number,
+  a: number,
+  r: number,
+) {
+  c.save();
+  c.translate(x, y);
+  c.rotate(a);
+  c.drawImage(markings[skin], -r, -r, 2 * r, 2 * r);
+  c.restore();
+}
 export const shadow = sprite(192, (c) => {
   const g = c.createRadialGradient(96, 99, 36, 96, 96, 94);
-  g.addColorStop(0, "#000a");
-  g.addColorStop(0.65, "#0005");
+  g.addColorStop(0, "#0006");
+  g.addColorStop(0.65, "#0002");
   g.addColorStop(1, "#0000");
   c.fillStyle = g;
   c.fillRect(0, 0, 192, 192);
 });
 export const orbs = skins.map((s) =>
   sprite(128, (c) => {
-    const g = c.createRadialGradient(62, 60, 0, 64, 64, 64);
-    g.addColorStop(0, "#fff");
-    g.addColorStop(0.11, s[1]);
-    g.addColorStop(0.22, s[2]);
-    g.addColorStop(0.25, s[1] + "99");
-    g.addColorStop(0.5, s[2] + "25");
-    g.addColorStop(1, s[2] + "00");
-    c.fillStyle = g;
+    const glow = c.createRadialGradient(64, 64, 10, 64, 64, 60);
+    glow.addColorStop(0, s[1] + "46");
+    glow.addColorStop(0.5, s[1] + "13");
+    glow.addColorStop(1, s[1] + "00");
+    c.fillStyle = glow;
     c.fillRect(0, 0, 128, 128);
+    c.fillStyle = s[2];
+    c.beginPath();
+    c.arc(64, 64, 16, 0, 7);
+    c.fill();
+    c.fillStyle = s[1];
+    c.beginPath();
+    c.arc(63, 61, 12, 0, 7);
+    c.fill();
+    c.fillStyle = "#fff9";
+    c.beginPath();
+    c.arc(60, 57, 4, 0, 7);
+    c.fill();
   }),
 );
 const heads = skins.map((s) =>
@@ -150,5 +219,23 @@ export function preview(
     if (i === 50) face(c, x, y, Math.atan2(y - lastY, x - lastX), r, skin);
     lastX = x;
     lastY = y;
+  }
+  for (let i = 6; i < 44; i += 7) {
+    const u = i / 50,
+      phase = u * 6 + time,
+      v = Math.sin(phase) * 0.17;
+    const x = vertical ? w * (0.5 + v) : w * (0.11 + 0.76 * u),
+      y = vertical ? h * (0.09 + 0.79 * u) : h * (0.5 + v);
+    const angle = vertical
+      ? Math.atan2(h * 0.79, w * 1.02 * Math.cos(phase))
+      : Math.atan2(h * 1.02 * Math.cos(phase), w * 0.76);
+    marking(
+      c,
+      skin,
+      x,
+      y,
+      angle,
+      (vertical ? w * 0.205 : h * 0.24) * Math.min(1, 0.2 + u * 3.8),
+    );
   }
 }

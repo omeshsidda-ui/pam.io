@@ -1,5 +1,6 @@
 const defaults = {
   name: "",
+  appearance: "system",
   skin: 0,
   best: 0,
   kills: 0,

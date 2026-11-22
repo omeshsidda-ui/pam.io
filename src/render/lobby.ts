@@ -18,7 +18,7 @@ let w = 0,
 const bots: Snake[] = [],
   food = new Grid<Pellet>(),
   segments = new Grid<Segment>();
-const dots = Array.from({ length: 120 }, (_, i) => ({
+const dots = Array.from({ length: 88 }, (_, i) => ({
   x: (i * 0.618034 + 0.08) % 1,
   y: (((Math.sin(i * 482.22) * 43758) % 1) + 1) % 1,
   c: (i * 7) % skins.length,

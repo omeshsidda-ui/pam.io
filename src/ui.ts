@@ -1,8 +1,13 @@
+import { resolvedTheme, setAppearance } from "./theme";
 import { skins } from "./config";
 import { profile, save } from "./storage";
 import { preview } from "./render/spriteCache";
 export const el = (id: string) => document.getElementById(id)!;
 const paths: Record<string, string> = {
+  forward: '<path d="M4 12h15m-6-6 6 6-6 6"/>',
+  light:
+    '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/>',
+  dark: '<path d="M20.7 14.1A8.8 8.8 0 0 1 9.9 3.3 9 9 0 1 0 20.7 14.1Z"/>',
   skins:
     '<path d="M8 3 3 6l-2 5 4 2 2-2v10h10V11l2 2 4-2-2-5-5-3c-1 4-7 4-8 0Z"/>',
   settings:
@@ -124,6 +129,28 @@ el("use").onclick = () => {
   save();
   screen("home");
 };
+function themeControls() {
+  const next = resolvedTheme() === "dark" ? "light" : "dark";
+  const toggle = el("theme-switch");
+  toggle.innerHTML = icon(next);
+  toggle.title = "Switch to " + next + " mode";
+  toggle.setAttribute("aria-label", toggle.title);
+  toggle.onclick = () => setAppearance(next);
+  for (const button of el("appearance").querySelectorAll("button"))
+    button.setAttribute(
+      "aria-pressed",
+      String(button.dataset.mode === profile.appearance),
+    );
+}
+for (const mode of ["system", "light", "dark"] as const) {
+  const button = document.createElement("button");
+  button.textContent = mode[0].toUpperCase() + mode.slice(1);
+  button.dataset.mode = mode;
+  button.onclick = () => setAppearance(mode);
+  el("appearance").append(button);
+}
+window.addEventListener("pam-theme", themeControls);
+themeControls();
 function options() {
   for (const [container, items] of [
     ["hands", ["Right handed", "Left handed"]],

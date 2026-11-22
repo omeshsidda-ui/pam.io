@@ -6,7 +6,8 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <meta name="theme-color" content="#101f34" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ede8db" />
     <title>PAM.IO · Snake Arena</title>
   </head>
   <body data-screen="home">
@@ -18,12 +19,14 @@
           id="skins"
           aria-label="Open skins"
           data-icon="skins"
+          data-caption="Skins"
         ></button
         ><button
           class="round"
           id="settings"
           aria-label="Open settings"
           data-icon="settings"
+          data-caption="Settings"
         ></button>
       </nav>
       <div class="record glass">
@@ -35,8 +38,12 @@
         <div class="home-card glass">
           <div class="outfit">
             <canvas id="outfit" width="300" height="110"></canvas>
-            <div><small>YOUR SNAKE</small><strong id="equipped"></strong></div>
-            <button class="edit" id="change">Change</button>
+            <div>
+              <small>SELECTED SKIN</small><strong id="equipped"></strong>
+            </div>
+            <button class="edit" id="change" aria-label="Change skin">
+              Change
+            </button>
           </div>
           <label for="nickname">Nickname</label>
           <div class="input">
@@ -49,7 +56,7 @@
             />
           </div>
           <button id="play" class="primary">
-            <i data-icon="play"></i>PLAY
+            <span>Play</span><i data-icon="forward"></i>
           </button>
         </div>
       </div>
@@ -57,7 +64,10 @@
         <span><kbd>Mouse / WASD</kbd> Steer</span
         ><span><kbd>Click / Space</kbd> Boost</span>
       </div>
-      <button class="round audio" id="mute" aria-label="Toggle sound"></button>
+      <div class="utilities">
+        <button class="round" id="theme-switch"></button
+        ><button class="round" id="mute" aria-label="Toggle sound"></button>
+      </div>
     </section>
     <section id="shop" class="screen overlay">
       <div class="shop-heading">
@@ -83,7 +93,11 @@
     </section>
     <section id="options" class="screen overlay centered">
       <div class="panel glass">
-        <h2>Control setup</h2>
+        <h2>Settings</h2>
+        <fieldset>
+          <legend>Appearance</legend>
+          <div id="appearance" class="choices"></div>
+        </fieldset>
         <fieldset>
           <legend>Handedness</legend>
           <div id="hands" class="choices"></div>
@@ -101,7 +115,15 @@
         <strong id="hud">0</strong>
         <div id="boss" hidden>
           <small id="charge-label">Find the bolt circle</small>
-          <div role="progressbar" aria-label="Bolt charge" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i><i></i><i></i></div>
+          <div
+            role="progressbar"
+            aria-label="Bolt charge"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <i></i><i></i><i></i>
+          </div>
         </div>
       </div>
       <aside class="board glass">
@@ -116,7 +138,8 @@
     </section>
     <section id="results" class="screen centered overlay">
       <div class="panel glass">
-        <h2 id="result-title">Game over</h2><p id="death-cause"></p>
+        <h2 id="result-title">Game over</h2>
+        <p id="death-cause"></p>
         <table>
           <thead>
             <tr>
