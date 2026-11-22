@@ -1,0 +1,3 @@
+import {profile} from '../storage';
+let ctx:AudioContext|undefined;
+export function sound(type:'eat'|'boost'|'kill'|'boss'|'play'){if(profile.mute)return;try{ctx??=new AudioContext();if(ctx.state==='suspended')void ctx.resume();const o=ctx.createOscillator(),g=ctx.createGain(),t=ctx.currentTime;o.type=type==='boss'?'sawtooth':'sine';const f={eat:630,boost:170,kill:330,boss:95,play:430}[type];o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(type==='eat'||type==='play'?f*1.6:f*.3,t+.16);g.gain.setValueAtTime(.045,t);g.gain.exponentialRampToValueAtTime(.001,t+.18);o.connect(g).connect(ctx.destination);o.start();o.stop(t+.19)}catch{}}

@@ -1,0 +1,8 @@
+import {skins} from '../config';
+function sprite(n:number,paint:(c:CanvasRenderingContext2D)=>void){const el=document.createElement('canvas');el.width=el.height=n;paint(el.getContext('2d')!);return el}
+export const beads=skins.map((s,i)=>[0,1].map(k=>sprite(80,c=>{const g=c.createRadialGradient(27,17,2,40,41,37);g.addColorStop(0,'#faffee');g.addColorStop(.21,k?s[2]:s[1]);g.addColorStop(.58,k?s[1]:s[2]);g.addColorStop(1,'#142019');c.fillStyle=g;c.beginPath();c.arc(40,40,38,0,7);c.fill();if(i>3){c.fillStyle='#ffffff35';c.beginPath();c.ellipse(28,28,9,4,-.6,0,7);c.fill()}})));
+export const orbs=skins.map(s=>sprite(64,c=>{const g=c.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'white');g.addColorStop(.12,s[1]);g.addColorStop(.22,s[1]);g.addColorStop(.27,s[2]+'a0');g.addColorStop(.45,s[2]+'36');g.addColorStop(1,s[2]+'00');c.fillStyle=g;c.fillRect(0,0,64,64)}));
+export const eye=sprite(48,c=>{c.fillStyle='white';c.beginPath();c.ellipse(24,24,21,17,0,0,7);c.fill();c.fillStyle='#131520';c.beginPath();c.arc(31,24,10,0,7);c.fill();c.fillStyle='white';c.fillRect(32,19,4,4)});
+export const crown=sprite(64,c=>{c.fillStyle='#ffd85c';c.beginPath();c.moveTo(6,19);c.lineTo(20,29);c.lineTo(32,9);c.lineTo(45,29);c.lineTo(58,19);c.lineTo(52,47);c.lineTo(12,47);c.fill()});
+export function face(c:CanvasRenderingContext2D,x:number,y:number,a:number,r:number){c.save();c.translate(x,y);c.rotate(a);for(const sign of [-1,1])c.drawImage(eye,0,sign*r*.49-r*.35,r*.92,r*.74);c.restore()}
+export function preview(c:CanvasRenderingContext2D,skin:number){c.clearRect(0,0,480,112);for(let i=0;i<=28;i++){const t=i/28,x=45+t*380,y=58+Math.sin(t*6.9)*19,r=7+11*Math.min(1,t*4);c.drawImage(beads[skin][Math.floor(i/3)%2],x-r,y-r,r*2,r*2);if(i===28)face(c,x,y,.2,r)}}
