@@ -1,6 +1,7 @@
 import { R, angleDiff, CHARGE_SECONDS } from "../config";
 import type { World } from "../engine/world";
 import type { Snake } from "../types";
+import { playZoom } from "../engine/camera";
 import { width } from "../engine/physics";
 import { beads, orbs, crown, face, shadow } from "./spriteCache";
 import { lobby } from "./lobby";
@@ -103,7 +104,13 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
     }
   }
 }
-export function draw(world: World, live: boolean, f: number, time: number) {
+export function draw(
+  world: World,
+  live: boolean,
+  f: number,
+  time: number,
+  pullback = 0,
+) {
   const w = innerWidth,
     h = innerHeight,
     dpr = Math.min(devicePixelRatio || 1, 2),
@@ -118,13 +125,10 @@ export function draw(world: World, live: boolean, f: number, time: number) {
   c.save();
   if (live) {
     const s = world.player;
-    zoom +=
-      (Math.max(
-        0.53,
-        (Math.min(w, h) < 600 ? 0.79 : 1.08) - Math.log1p(s.mass / 200) * 0.16,
-      ) -
-        zoom) *
-      0.035;
+    world.cameraZoom += (playZoom(s.mass, w, h) - world.cameraZoom) * 0.035;
+    const ease = pullback * pullback * (3 - 2 * pullback);
+    zoom = world.cameraZoom * (1 - 0.25 * ease);
+    if (s.dead) f = 1;
     cx = s.old[0].x + (s.x - s.old[0].x) * f;
     cy = s.old[0].y + (s.y - s.old[0].y) * f;
     c.translate(
@@ -222,13 +226,14 @@ export function draw(world: World, live: boolean, f: number, time: number) {
   const lead = world.ranking[0];
   for (const s of world.snakes) if (!s.dead) snake(s, f, s === lead);
   for (const p of world.particles) {
-    if (!visible(p.x, p.y)) continue;
+    if (p.life <= 0 || !visible(p.x, p.y)) continue;
     c.fillStyle = p.color;
     c.globalAlpha = Math.min(1, p.life * 2);
     if (p.label) c.fillText(p.label, p.x, p.y);
     else c.fillRect(p.x, p.y, 4, 4);
   }
   c.restore();
+  if (world.player.dead) return;
   const radius = h < 540 ? 29 : 42,
     mx = radius + 15,
     my = radius + 15;

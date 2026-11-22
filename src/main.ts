@@ -7,6 +7,8 @@ import { sound } from "./audio/sfx";
 import { el, screen, animateMenu } from "./ui";
 const input = el("nickname") as HTMLInputElement;
 input.value = profile.name;
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+const endingSeconds = 1.05;
 const portrait = matchMedia("(pointer:coarse) and (orientation:portrait)");
 let world = new World(),
   playing = false,
@@ -77,6 +79,7 @@ function start() {
   bestRank = 0;
   peakScore = 0;
   deathTime = 0;
+  document.body.classList.remove("round-ending");
   playing = true;
   holding = false;
   keyBoost = false;
@@ -99,6 +102,11 @@ function start() {
 }
 function finish() {
   playing = false;
+  profile.recentDifficulty = world.difficulty.nextRound(
+    world.tick,
+    bestRank,
+    world.player.kills,
+  );
   progress(peakScore);
   profile.bestKills = Math.max(profile.bestKills, world.player.kills);
   profile.bestRank = Math.min(profile.bestRank || bestRank, bestRank);
@@ -250,7 +258,7 @@ function step() {
       p.y += p.dy * STEP;
       p.life -= STEP;
     }
-    if (deathTime >= 0.8) finish();
+    if (deathTime >= (reducedMotion.matches ? 0.35 : endingSeconds)) finish();
     return;
   }
   const x =
@@ -269,6 +277,7 @@ function step() {
   keyBoost = boost;
   world.player.boost = boost;
   world.update();
+  if (world.player.dead) document.body.classList.add("round-ending");
   chargeHUD();
   rank();
   if (
@@ -289,7 +298,11 @@ function frame(now: number) {
         step();
       }
     }
-    draw(world, playing, acc / STEP, now / 1000);
+    const results = document.body.dataset.screen === "results";
+    const pullback = reducedMotion.matches
+      ? 0
+      : Math.min(1, deathTime / endingSeconds);
+    draw(world, playing || results, acc / STEP, now / 1000, pullback);
     if (!playing) animateMenu(now * 0.0015);
   }
   if (profile.unlocked > unlocked) {

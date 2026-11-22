@@ -9,6 +9,7 @@ const defaults = {
   control: "Joystick",
   bestKills: 0,
   bestRank: 0,
+  recentDifficulty: .45,
 };
 export const profile = { ...defaults };
 try {

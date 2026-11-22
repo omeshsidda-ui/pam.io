@@ -8,6 +8,8 @@ import {
   rand,
   skins,
 } from "../config";
+import { Difficulty } from "./difficulty";
+import { playZoom } from "./camera";
 import { Grid } from "./spatialGrid";
 import { move, width } from "./physics";
 import { decide } from "./botAI";
@@ -38,6 +40,9 @@ export class World {
   ranking: Snake[] = [];
   deathCause = "";
   waiting = new Set<number>();
+  difficulty = new Difficulty(profile.recentDifficulty);
+  cameraZoom = playZoom(65, innerWidth, innerHeight);
+  private nextBossAttempt = 0;
   constructor() {
     this.player = this.spawn(0)!;
     for (let i = 1; i <= BOTS; i++) if (!this.spawn(i)) this.waiting.add(i);
@@ -48,7 +53,17 @@ export class World {
   spawn(id: number, boss = false) {
     // A fresh bot starts curled inside this disk. Reserve the whole footprint,
     // including its nose and tail, before adding anything to the world.
-    const footprint = 182;
+    const radius = 101;
+    const footprint = radius + 52;
+    const heading = rand(0, 2 * Math.PI);
+    // Zoom can ease between two values. Exclude the larger visible rectangle
+    // plus room for interpolation, shake, and one frame of motion.
+    const zoom = Math.min(
+      this.cameraZoom,
+      playZoom(this.player?.mass ?? 65, innerWidth, innerHeight),
+    );
+    const halfW = innerWidth / (2 * zoom) + footprint + 90,
+      halfH = innerHeight / (2 * zoom) + footprint + 90;
     let p = { x: 0, y: 0 };
     if (id) {
       let safe = false;
@@ -58,12 +73,7 @@ export class World {
         const dx = p.x - this.player.x,
           dy = p.y - this.player.y;
         if (Math.hypot(dx, dy) < footprint + 440) continue;
-        if (
-          this.tick &&
-          Math.abs(dx) < Math.min(1700, innerWidth / 1.06) + footprint &&
-          Math.abs(dy) < Math.min(1150, innerHeight / 1.06) + footprint
-        )
-          continue;
+        if (Math.abs(dx) <= halfW && Math.abs(dy) <= halfH) continue;
         if (
           this.snakes.some(
             (s) =>
@@ -80,6 +90,22 @@ export class World {
         break;
       }
       if (!safe) return undefined;
+      // The sampled point is the coil's center, not its head.
+      p.x += Math.sin(heading) * radius;
+      p.y -= Math.cos(heading) * radius;
+    }
+    // Keep a handful of persistent competitors in the population. Returning
+    // contenders must earn the last part of their climb on the field.
+    const skill = this.difficulty.level;
+    const contender = id > 0 && id % 8 === 0;
+    let mass = id ? rand(55, this.tick ? 175 + 215 * skill : 600) : 65;
+    if (contender) {
+      mass = rand(670, 900) + skill * 360;
+      if (this.tick)
+        mass = Math.min(
+          mass,
+          Math.max(180, (this.ranking[0]?.mass ?? 600) * 0.78),
+        );
     }
     const v = Math.random(),
       s: Snake = {
@@ -91,20 +117,26 @@ export class World {
             ? names[(id - 1) % names.length]
             : profile.name || "Player",
         skin: id ? (id * 5) % 12 : profile.skin,
-        mass: boss
-          ? 1500
-          : id
-            ? this.tick
-              ? rand(55, 155)
-              : rand(55, 720)
-            : 65,
-        a: rand(0, 6.28),
+        mass: boss ? 1500 : mass,
+        a: heading,
         prevA: 0,
         aim: 0,
         boost: false,
         body: [],
         old: [],
-        role: v < 0.2 ? 0 : v < 0.45 ? 1 : v < 0.6 ? 2 : v < 0.85 ? 3 : 4,
+        role: contender
+          ? id % 16 === 0
+            ? 3
+            : 4
+          : v < 0.2
+            ? 0
+            : v < 0.45
+              ? 1
+              : v < 0.6
+                ? 2
+                : v < 0.85
+                  ? 3
+                  : 4,
         think: 0,
         dead: false,
         kills: 0,
@@ -113,8 +145,7 @@ export class World {
     s.aim = s.a;
     move(s);
     // A gentle coil keeps even the longest boss inside the reserved disk.
-    const radius = 72,
-      centerX = s.x - Math.sin(s.a) * radius,
+    const centerX = s.x - Math.sin(s.a) * radius,
       centerY = s.y + Math.cos(s.a) * radius;
     for (let i = 0; i < s.body.length; i++) {
       const angle = s.a - (i * width(s) * 0.64) / radius;
@@ -126,6 +157,10 @@ export class World {
     }
     this.snakes.push(s);
     return s;
+  }
+  private tryBossSpawn() {
+    this.nextBossAttempt = this.tick + 30;
+    return this.spawn(33, true);
   }
   pellet() {
     this.food.push({
@@ -342,7 +377,13 @@ export class World {
     const leader = this.ranking[0] ?? this.player;
     for (const s of this.snakes)
       if (!s.dead && s.id && (s.think -= STEP) <= 0)
-        decide(s, this.fg, this.bg, leader === s ? this.player : leader);
+        decide(
+          s,
+          this.fg,
+          this.bg,
+          leader === s ? this.player : leader,
+          this.difficulty.level,
+        );
     for (const s of this.snakes) {
       if (s.dead) continue;
       move(s);
@@ -375,11 +416,19 @@ export class World {
         if (this.spawn(id)) this.waiting.delete(id);
     // Publish one shared standings snapshot. Retire a fallen king immediately.
     if (this.tick % 24 === 0 || this.ranking.some((s) => s.dead)) this.rank();
+    if (this.tick % 120 === 0)
+      this.difficulty.sample(
+        this.player,
+        this.tick,
+        this.ranking.indexOf(this.player) + 1,
+        this.ranking.length,
+      );
     if (
       !this.player.dead &&
       !this.bossAppeared &&
       (this.ranking[0] === this.player || this.player.mass >= 1500) &&
-      this.spawn(33, true)
+      this.tick >= this.nextBossAttempt &&
+      this.tryBossSpawn()
     ) {
       this.bossAppeared = true;
 

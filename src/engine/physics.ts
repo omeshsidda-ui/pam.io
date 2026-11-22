@@ -2,6 +2,7 @@ import { angleDiff, BOOST, SPEED, STEP } from "../config";
 import type { Snake } from "../types";
 export const width = (s: Snake) =>
   Math.min(38, 9 + 2.6 * Math.log1p(s.mass / 18));
+export const turnRate = (s: Snake) => 84 / width(s);
 export function move(s: Snake) {
   const w = width(s),
     n = Math.min(280, Math.floor(12 + s.mass / 5));
@@ -16,15 +17,8 @@ export function move(s: Snake) {
     s.old[i].y = p.y;
   });
   s.prevA = s.a;
-  s.a +=
-    (Math.max(
-      -1,
-      Math.min(1, angleDiff(s.aim, s.a) / ((STEP * 6.45 * 15) / w)),
-    ) *
-      STEP *
-      6.45 *
-      15) /
-    w;
+  const maxTurn = STEP * turnRate(s);
+  s.a += Math.max(-maxTurn, Math.min(maxTurn, angleDiff(s.aim, s.a)));
   if (s.mass < 35) s.boost = false;
   const d = SPEED * STEP * (s.boost ? BOOST : 1);
   s.x += Math.cos(s.a) * d;
