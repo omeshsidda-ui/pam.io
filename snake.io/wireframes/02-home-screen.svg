@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540">
+  <rect width="960" height="540" fill="#101c30"/>
+  <text x="480" y="42" fill="#64748b" font-family="sans-serif" font-size="13" text-anchor="middle">LIVE ANIMATED HEX-GRID ARENA WITH AI SNAKES IN BACKGROUND</text>
+  <circle cx="58" cy="64" r="28" fill="#2563eb"/>
+  <text x="58" y="69" fill="#fff" font-family="sans-serif" font-size="11" font-weight="700" text-anchor="middle">SKINS</text>
+  <circle cx="58" cy="132" r="24" fill="#1d4ed8"/>
+  <text x="58" y="136" fill="#fff" font-family="sans-serif" font-size="10" font-weight="700" text-anchor="middle">GEAR</text>
+  <text x="480" y="110" fill="#ffffff" font-family="sans-serif" font-size="52" font-weight="800" text-anchor="middle">PAM.IO</text>
+  <rect x="780" y="34" width="150" height="52" rx="14" fill="#0c1628" fill-opacity="0.8" stroke="#38bdf8" stroke-opacity="0.35"/>
+  <text x="855" y="54" fill="#94a3b8" font-family="sans-serif" font-size="11" text-anchor="middle">BEST SCORE</text>
+  <text x="855" y="76" fill="#ffe047" font-family="sans-serif" font-size="20" font-weight="700" text-anchor="middle">12,450</text>
+  <rect x="290" y="150" width="380" height="250" rx="24" fill="#0c1628" fill-opacity="0.82" stroke="#38bdf8" stroke-opacity="0.45" stroke-width="2"/>
+  <rect x="330" y="185" width="300" height="46" rx="23" fill="#1e293b" stroke="#475569"/>
+  <text x="355" y="213" fill="#e2e8f0" font-family="sans-serif" font-size="16">Player Nickname...</text>
+  <rect x="360" y="258" width="240" height="64" rx="32" fill="#22c55e"/>
+  <text x="480" y="298" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="800" text-anchor="middle">PLAY</text>
+  <text x="480" y="362" fill="#94a3b8" font-family="sans-serif" font-size="13" text-anchor="middle">Mouse / WASD to steer  |  Click / Space to boost</text>
+</svg>

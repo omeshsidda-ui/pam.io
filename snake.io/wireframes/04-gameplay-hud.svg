@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540">
+  <rect width="960" height="540" fill="#101c30"/>
+  <text x="480" y="64" fill="#ffffff" font-family="sans-serif" font-size="44" font-weight="800" text-anchor="middle">2879</text>
+  <rect x="370" y="80" width="220" height="18" rx="9" fill="#334155" stroke="#ffffff" stroke-width="2"/>
+  <rect x="372" y="82" width="144" height="14" rx="7" fill="#ef4444"/>
+  <text x="480" y="116" fill="#fca5a5" font-family="sans-serif" font-size="12" text-anchor="middle">BOSS HP BAR (ONLY DURING BOSS EVENT)</text>
+  <rect x="748" y="20" width="192" height="230" rx="14" fill="#0c1628" fill-opacity="0.72"/>
+  <text x="764" y="46" fill="#ffe047" font-family="sans-serif" font-size="14" font-weight="700">1. You (Crown)   2879</text>
+  <text x="764" y="70" fill="#e2e8f0" font-family="sans-serif" font-size="13">2. Nova          1785</text>
+  <text x="764" y="92" fill="#e2e8f0" font-family="sans-serif" font-size="13">3. ViperX        1155</text>
+  <text x="764" y="114" fill="#94a3b8" font-family="sans-serif" font-size="13">4..10 Top Bots</text>
+  <circle cx="480" cy="300" r="95" fill="#ef4444" fill-opacity="0.18" stroke="#ffffff" stroke-width="3" stroke-dasharray="10 6"/>
+  <text x="480" y="305" fill="#ffffff" font-family="sans-serif" font-size="13" font-weight="700" text-anchor="middle">CHARGING BOLT ZONE</text>
+  <circle cx="110" cy="430" r="56" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+  <circle cx="110" cy="430" r="24" fill="#ffffff" fill-opacity="0.35"/>
+  <text x="110" y="508" fill="#94a3b8" font-family="sans-serif" font-size="11" text-anchor="middle">MOBILE JOYSTICK</text>
+  <polygon points="850,382 894,407 894,457 850,482 806,457 806,407" fill="#ffffff" fill-opacity="0.14" stroke="#ffffff" stroke-opacity="0.4" stroke-width="2"/>
+  <text x="850" y="437" fill="#ffffff" font-family="sans-serif" font-size="13" font-weight="700" text-anchor="middle">BOOST</text>
+  <text x="850" y="508" fill="#94a3b8" font-family="sans-serif" font-size="11" text-anchor="middle">MOBILE BOOST</text>
+</svg>

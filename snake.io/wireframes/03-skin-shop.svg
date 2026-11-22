@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540">
+  <rect width="960" height="540" fill="#143242"/>
+  <polygon points="48,46 30,58 48,70" fill="#ffffff"/>
+  <text x="86" y="64" fill="#ffffff" font-family="sans-serif" font-size="20" font-weight="700">CHANGE SNAKES</text>
+  <rect x="28" y="96" width="180" height="416" rx="16" fill="#0b1d28" fill-opacity="0.85"/>
+  <text x="50" y="136" fill="#ffe047" font-family="sans-serif" font-size="15" font-weight="700">All (8/12)</text>
+  <text x="50" y="176" fill="#cbd5e1" font-family="sans-serif" font-size="15">Basic (4/4)</text>
+  <text x="50" y="216" fill="#cbd5e1" font-family="sans-serif" font-size="15">Neon (2/4)</text>
+  <text x="50" y="256" fill="#cbd5e1" font-family="sans-serif" font-size="15">Rare (2/4)</text>
+  <rect x="232" y="96" width="150" height="270" rx="18" fill="#0b1d28" stroke="#a3e635" stroke-width="3"/>
+  <text x="307" y="236" fill="#a3e635" font-family="sans-serif" font-size="14" font-weight="700" text-anchor="middle">SELECTED</text>
+  <rect x="402" y="96" width="150" height="270" rx="18" fill="#0b1d28" stroke="#334155"/>
+  <text x="477" y="236" fill="#e2e8f0" font-family="sans-serif" font-size="14" text-anchor="middle">UNLOCKED</text>
+  <rect x="572" y="96" width="150" height="270" rx="18" fill="#0b1d28" stroke="#334155"/>
+  <circle cx="647" cy="230" r="24" fill="#6366f1"/>
+  <text x="647" y="235" fill="#fff" font-family="sans-serif" font-size="12" font-weight="700" text-anchor="middle">LOCK</text>
+  <rect x="742" y="96" width="150" height="270" rx="18" fill="#0b1d28" stroke="#334155"/>
+  <rect x="232" y="392" width="700" height="120" rx="18" fill="#0b1d28" fill-opacity="0.9"/>
+  <text x="260" y="432" fill="#ffe047" font-family="sans-serif" font-size="22" font-weight="800">CYBER VIPER</text>
+  <text x="260" y="460" fill="#ffffff" font-family="sans-serif" font-size="14">Score 1,500 in a single run</text>
+  <rect x="260" y="474" width="320" height="18" rx="9" fill="#1e3a5f"/>
+  <rect x="260" y="474" width="210" height="18" rx="9" fill="#38bdf8"/>
+  <rect x="770" y="424" width="136" height="56" rx="28" fill="#22c55e"/>
+  <text x="838" y="459" fill="#ffffff" font-family="sans-serif" font-size="20" font-weight="800" text-anchor="middle">USE</text>
+</svg>

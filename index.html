@@ -1,10 +1,143 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f5f4ec"><title>pam.io — Snake arena</title></head><body>
-<canvas id="arena"></canvas>
-<header><strong class="brand">pam<span>.io</span></strong><button id="mute" aria-label="Toggle sound"></button></header>
-<main id="menu"><div class="setup"><p class="caption" id="state">SINGLE PLAYER</p><h1 id="title">Snake arena<span>.</span></h1><p id="intro">Collect orbs. Cut off rivals. Take the crown.</p>
-<div class="field"><label for="nickname">Nickname</label><input id="nickname" maxlength="16" placeholder="Player" autocomplete="off"></div>
-<button id="play">Enter arena</button><div class="hint desktop"><kbd>WASD</kbd> steer <i></i><kbd>Space</kbd> boost</div><div class="hint mobile">Drag to steer · Hold boost to sprint</div></div>
-<section class="skinbox" aria-label="Snake selection"><div class="plate"><span>SKIN SELECT</span><span id="count"></span></div><canvas id="preview" width="800" height="490"></canvas><div class="selector"><strong id="skinname"></strong><div><button id="prev" aria-label="Previous skin">←</button><button id="next" aria-label="Next skin">→</button></div></div></section></main>
-<div id="hud"></div><aside class="board"><button id="scores" aria-expanded="false">Leaderboard</button><div id="rows"></div></aside><div class="radar"><canvas id="map" width="160" height="160"></canvas></div><div id="notice"></div><div id="stick" aria-label="Steer"><i></i></div><button id="boost">Boost</button>
-<script type="module" src="/src/main.ts"></script></body></html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#101f34" />
+    <title>PAM.IO · Snake Arena</title>
+  </head>
+  <body data-screen="home">
+    <canvas id="arena" aria-label="Snake arena"></canvas>
+    <section id="home" class="screen">
+      <nav>
+        <button
+          class="round"
+          id="skins"
+          aria-label="Open skins"
+          data-icon="skins"
+        ></button
+        ><button
+          class="round"
+          id="settings"
+          aria-label="Open settings"
+          data-icon="settings"
+        ></button>
+      </nav>
+      <div class="record glass">
+        <i data-icon="cup"></i>
+        <div><small>BEST SCORE</small><strong id="best">0</strong></div>
+      </div>
+      <div class="home-stack">
+        <h1>PAM<span>.IO</span></h1>
+        <div class="home-card glass">
+          <div class="outfit">
+            <canvas id="outfit" width="300" height="110"></canvas>
+            <div><small>YOUR SNAKE</small><strong id="equipped"></strong></div>
+            <button class="edit" id="change">Change</button>
+          </div>
+          <label for="nickname">Nickname</label>
+          <div class="input">
+            <i data-icon="pencil"></i
+            ><input
+              id="nickname"
+              maxlength="16"
+              placeholder="Player"
+              autocomplete="off"
+            />
+          </div>
+          <button id="play" class="primary">
+            <i data-icon="play"></i>PLAY
+          </button>
+        </div>
+      </div>
+      <div class="tips">
+        <span><kbd>Mouse / WASD</kbd> Steer</span
+        ><span><kbd>Click / Space</kbd> Boost</span>
+      </div>
+      <button class="round audio" id="mute" aria-label="Toggle sound"></button>
+    </section>
+    <section id="shop" class="screen overlay">
+      <div class="shop-heading">
+        <button
+          class="round back"
+          aria-label="Back home"
+          data-icon="back"
+        ></button>
+        <h2>Skin shop</h2>
+      </div>
+      <div class="shop-layout">
+        <div id="categories" class="glass"></div>
+        <div id="cards"></div>
+        <div class="details glass">
+          <div>
+            <h3 id="skin-name"></h3>
+            <p id="condition"></p>
+            <progress id="milestone" max="1"></progress>
+          </div>
+          <button id="use" class="primary">USE</button>
+        </div>
+      </div>
+    </section>
+    <section id="options" class="screen overlay centered">
+      <div class="panel glass">
+        <h2>Control setup</h2>
+        <fieldset>
+          <legend>Handedness</legend>
+          <div id="hands" class="choices"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Steering</legend>
+          <div id="modes" class="choices"></div>
+        </fieldset>
+        <button id="audio-option"></button
+        ><button class="primary back">OK</button>
+      </div>
+    </section>
+    <section id="game" class="screen">
+      <div class="score">
+        <strong id="hud">0</strong>
+        <div id="boss" hidden>
+          <small>King Cobra</small>
+          <div><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <aside class="board glass">
+        <button id="scores" aria-expanded="true">
+          Leaderboard <span>⌃</span>
+        </button>
+        <div id="rows"></div>
+      </aside>
+      <div id="notice"></div>
+      <div id="stick"><i></i></div>
+      <button id="boost" aria-label="Boost" data-icon="bolt"></button>
+    </section>
+    <section id="results" class="screen centered overlay">
+      <div class="panel glass">
+        <h2 id="result-title">Game over</h2>
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>This Game</th>
+              <th>All Time</th>
+            </tr>
+          </thead>
+          <tbody id="stats"></tbody>
+        </table>
+        <div class="actions">
+          <button class="back">HOME</button
+          ><button id="again" class="primary">PLAY AGAIN</button>
+        </div>
+      </div>
+    </section>
+    <div id="rotate">
+      <i data-icon="phone"></i>
+      <h2>Rotate your phone<br />to play in landscape</h2>
+    </div>
+    <div id="toast" role="status"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
