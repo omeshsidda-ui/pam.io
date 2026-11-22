@@ -89,6 +89,10 @@ function start() {
     "aria-expanded",
     String(!matchMedia("(pointer:coarse)").matches),
   );
+  el("scores").lastElementChild!.textContent = matchMedia("(pointer:coarse)")
+    .matches
+    ? "⌄"
+    : "⌃";
   chargeHUD();
   sound("play");
   hud();
@@ -101,6 +105,7 @@ function finish() {
   save();
   el("result-title").textContent =
     peakScore > oldBest ? "New best!" : "Game over";
+  el("death-cause").textContent = world.deathCause;
   el("stats").replaceChildren();
   for (const values of [
     ["Score", peakScore, profile.best],

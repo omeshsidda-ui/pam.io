@@ -498,7 +498,7 @@ progress {
 .row:first-child i {
   color: var(--gold);
 }
-#scores[aria-expanded="false"] + div {
+#scores[aria-expanded="false"] + div .row:nth-child(n+4):not(.me) {
   display: none;
 }
 #boss small {
@@ -718,3 +718,5 @@ td:last-child {
     transform: rotate(90deg);
   }
 }
+
+#death-cause {margin-top:8px;color:var(--muted);font-size:14px}

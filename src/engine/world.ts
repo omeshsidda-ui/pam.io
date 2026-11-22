@@ -36,26 +36,51 @@ export class World {
   streak = 0;
   lastKill = -999;
   ranking: Snake[] = [];
+  deathCause = "";
+  waiting = new Set<number>();
   constructor() {
-    this.player = this.spawn(0);
-    for (let i = 1; i <= BOTS; i++) this.spawn(i);
+    this.player = this.spawn(0)!;
+    for (let i = 1; i <= BOTS; i++) if (!this.spawn(i)) this.waiting.add(i);
     while (this.food.length < FOOD) this.pellet();
     this.index();
     this.rank();
   }
   spawn(id: number, boss = false) {
-    let p = spot();
-    if (!id) p = { x: 0, y: 0 };
-    else
-      for (
-        let i = 0;
-        i < 80 &&
-        (Math.hypot(p.x - this.player.x, p.y - this.player.y) <
-          Math.min(1800, innerWidth * 0.65 + 220) ||
-          this.snakes.some((s) => Math.hypot(s.x - p.x, s.y - p.y) < 330));
-        i++
-      )
+    // A fresh bot starts curled inside this disk. Reserve the whole footprint,
+    // including its nose and tail, before adding anything to the world.
+    const footprint = 182;
+    let p = { x: 0, y: 0 };
+    if (id) {
+      let safe = false;
+      for (let attempt = 0; attempt < 100; attempt++) {
         p = spot();
+        if (Math.hypot(p.x, p.y) > R - footprint - 70) continue;
+        const dx = p.x - this.player.x,
+          dy = p.y - this.player.y;
+        if (Math.hypot(dx, dy) < footprint + 440) continue;
+        if (
+          this.tick &&
+          Math.abs(dx) < Math.min(1700, innerWidth / 1.06) + footprint &&
+          Math.abs(dy) < Math.min(1150, innerHeight / 1.06) + footprint
+        )
+          continue;
+        if (
+          this.snakes.some(
+            (s) =>
+              !s.dead &&
+              s.body.some(
+                (q, i) =>
+                  i % 4 === 0 &&
+                  Math.hypot(q.x - p.x, q.y - p.y) < footprint + width(s) * 3,
+              ),
+          )
+        )
+          continue;
+        safe = true;
+        break;
+      }
+      if (!safe) return undefined;
+    }
     const v = Math.random(),
       s: Snake = {
         ...p,
@@ -66,7 +91,13 @@ export class World {
             ? names[(id - 1) % names.length]
             : profile.name || "Player",
         skin: id ? (id * 5) % 12 : profile.skin,
-        mass: boss ? 1500 : id ? rand(55, 720) : 65,
+        mass: boss
+          ? 1500
+          : id
+            ? this.tick
+              ? rand(55, 155)
+              : rand(55, 720)
+            : 65,
         a: rand(0, 6.28),
         prevA: 0,
         aim: 0,
@@ -81,9 +112,17 @@ export class World {
       };
     s.aim = s.a;
     move(s);
-    for (let i = 1; i < s.body.length; i++) {
-      s.body[i].x = s.x - i * Math.cos(s.a) * width(s) * 0.64;
-      s.body[i].y = s.y - i * Math.sin(s.a) * width(s) * 0.64;
+    // A gentle coil keeps even the longest boss inside the reserved disk.
+    const radius = 72,
+      centerX = s.x - Math.sin(s.a) * radius,
+      centerY = s.y + Math.cos(s.a) * radius;
+    for (let i = 0; i < s.body.length; i++) {
+      const angle = s.a - (i * width(s) * 0.64) / radius;
+      const q = s.body[i];
+      q.x = centerX + Math.sin(angle) * radius;
+      q.y = centerY - Math.cos(angle) * radius;
+      s.old[i].x = q.x;
+      s.old[i].y = q.y;
     }
     this.snakes.push(s);
     return s;
@@ -121,9 +160,20 @@ export class World {
         });
   }
   rank() {
+    const incumbent = this.ranking[0];
     this.ranking = this.snakes
       .filter((s) => !s.dead)
-      .sort((a, b) => b.mass - a.mass);
+      .sort(
+        (a, b) =>
+          b.mass - a.mass ||
+          Number(b === incumbent) - Number(a === incumbent) ||
+          a.id - b.id,
+      );
+    const leader = this.ranking[0];
+    if (leader && incumbent && leader !== incumbent && this.noticeTime <= 0) {
+      this.notice = leader.name + " takes the crown";
+      this.noticeTime = 1.5;
+    }
   }
   fx(x: number, y: number, color: string, label = "") {
     const p = this.pool.pop() ?? ({} as Particle);
@@ -173,25 +223,84 @@ export class World {
     for (const s of this.snakes) {
       if (s.dead) continue;
       if (Math.hypot(s.x, s.y) > R - width(s)) {
+        if (s === this.player) this.deathCause = "You hit the arena wall.";
         deaths.set(s, undefined);
         continue;
       }
       let nearest = Infinity,
         killer: Snake | undefined;
-      this.bg.near(s.x, s.y, 85, (p) => {
-        if (p.s === s || p.s.dead || (p.i > 0 && p.i <= 3)) return;
-        const distance = Math.hypot(p.x - s.x, p.y - s.y);
-        if (distance > (width(s) + width(p.s)) * 0.78) return;
-        if (p.i === 0 && s.mass >= p.s.mass * 1.08) return;
+      let headOn = false;
+      this.bg.near(s.x, s.y, 100, (p) => {
+        if (p.s === s || p.s.dead) return;
+        const r = width(s),
+          other = width(p.s);
+        const hx = Math.cos(s.a),
+          hy = Math.sin(s.a),
+          ox = Math.cos(p.s.a),
+          oy = Math.sin(p.s.a);
+        const dx = p.s.x - s.x,
+          dy = p.s.y - s.y;
+        const headContact = p.i === 0;
+        let distance: number;
+        if (headContact) {
+          distance = Math.hypot(dx, dy);
+          if (distance > (r + other) * 0.76) return;
+          const closing = dx * hx + dy * hy,
+            opposing = -(dx * ox + dy * oy);
+          const duel =
+            hx * ox + hy * oy < -0.55 && closing >= 0 && opposing >= 0;
+          if (duel) {
+            if (s.mass >= p.s.mass * 1.08) return;
+          } else if (closing <= Math.max(0, opposing) + distance * 0.1) return;
+        } else {
+          // The front of the attacking head has to enter the actual body tube.
+          const noseX = s.x + hx * r * 0.45,
+            noseY = s.y + hy * r * 0.45;
+          const q = p.s.body[p.i - 2],
+            vx = q.x - p.x,
+            vy = q.y - p.y;
+          const t = Math.max(
+            0,
+            Math.min(
+              1,
+              ((noseX - p.x) * vx + (noseY - p.y) * vy) /
+                (vx * vx + vy * vy || 1),
+            ),
+          );
+          distance = Math.hypot(noseX - p.x - t * vx, noseY - p.y - t * vy);
+          const taper =
+            0.16 +
+            0.84 *
+              Math.sin(
+                (Math.min(1, (p.s.body.length - p.i + 2 * t) / 10) * Math.PI) /
+                  2,
+              );
+          if (distance > r * 0.44 + other * taper * 0.82) return;
+          // The first link belongs to the facing contest for a genuine frontal hit.
+          if (
+            p.i === 2 &&
+            hx * ox + hy * oy < -0.55 &&
+            dx * hx + dy * hy >= 0 &&
+            dx * ox + dy * oy <= 0
+          )
+            return;
+        }
         if (
           distance < nearest ||
           (distance === nearest && p.s.id < (killer?.id ?? Infinity))
         ) {
           nearest = distance;
           killer = p.s;
+          headOn = headContact && hx * ox + hy * oy < -0.55;
         }
       });
-      if (killer) deaths.set(s, killer);
+      if (killer) {
+        deaths.set(s, killer);
+        if (s === this.player)
+          this.deathCause = headOn
+            ? "Head-on collision with " + killer.name + "."
+            : "You ran into " + killer.name + ".";
+      }
     }
     // A snake hit on this tick can still be the cause of another snake's death.
     for (const [snake, killer] of deaths) this.die(snake, killer);
@@ -259,16 +368,21 @@ export class World {
     }
     for (const s of this.snakes.filter((s) => s.dead && s.id)) {
       this.snakes.splice(this.snakes.indexOf(s), 1);
-      if (!s.boss) this.spawn(s.id);
+      if (!s.boss) this.waiting.add(s.id);
     }
-    this.rank();
+    if (this.tick % 15 === 0)
+      for (const id of this.waiting)
+        if (this.spawn(id)) this.waiting.delete(id);
+    // Publish one shared standings snapshot. Retire a fallen king immediately.
+    if (this.tick % 24 === 0 || this.ranking.some((s) => s.dead)) this.rank();
     if (
       !this.player.dead &&
       !this.bossAppeared &&
-      (this.ranking[0] === this.player || this.player.mass >= 1500)
+      (this.ranking[0] === this.player || this.player.mass >= 1500) &&
+      this.spawn(33, true)
     ) {
       this.bossAppeared = true;
-      this.spawn(33, true);
+
       this.trap = {
         x: this.player.x * 0.85,
         y: this.player.y * 0.85,
@@ -281,7 +395,8 @@ export class World {
     if (this.trap) {
       const t = this.trap;
       t.charge =
-        !this.player.dead && Math.hypot(this.player.x - t.x, this.player.y - t.y) < 140
+        !this.player.dead &&
+        Math.hypot(this.player.x - t.x, this.player.y - t.y) < 140
           ? t.charge + STEP
           : 0;
       const boss = this.snakes.find((s) => s.boss && !s.dead);

@@ -145,6 +145,24 @@ export function draw(world: World, live: boolean, f: number, time: number) {
     c.restore();
     return;
   }
+  // Darken the out-of-bounds area and mark the approach before the lethal edge.
+  c.beginPath();
+  c.rect(left - 14, top - 14, right - left + 28, bottom - top + 28);
+  c.arc(0, 0, R, 0, Math.PI * 2);
+  c.fillStyle = "#210e1ee8";
+  c.fill("evenodd");
+  c.beginPath();
+  c.arc(0, 0, R - 46, 0, Math.PI * 2);
+  c.lineWidth = 80;
+  c.strokeStyle = "#ff506523";
+  c.stroke();
+  c.beginPath();
+  c.arc(0, 0, R - 95, 0, Math.PI * 2);
+  c.lineWidth = 3;
+  c.strokeStyle = "#ff9295aa";
+  c.setLineDash([14, 12]);
+  c.stroke();
+  c.setLineDash([]);
   c.beginPath();
   c.arc(0, 0, R, 0, 7);
   c.strokeStyle = "#ff4558";
@@ -211,46 +229,98 @@ export function draw(world: World, live: boolean, f: number, time: number) {
     else c.fillRect(p.x, p.y, 4, 4);
   }
   c.restore();
-  // Prioritize the objective over the crown when both are beyond the screen.
-  const boltOffscreen =
-    tr && (tr.x < left || tr.x > right || tr.y < top || tr.y > bottom);
-  const marker = boltOffscreen ? tr : lead;
-  if (marker && marker !== world.player) {
-    const dx = (marker.x - cx) * zoom,
-      dy = (marker.y - cy) * zoom;
-    const k = Math.min(
-      (w / 2 - 34) / Math.max(1, Math.abs(dx)),
-      (h / 2 - 60) / Math.max(1, Math.abs(dy)),
-    );
-    if (k < 1) {
-      c.save();
-      c.translate(w / 2 + dx * k, h / 2 + dy * k);
-      if (boltOffscreen) {
-        c.beginPath();
-        c.arc(0, 0, 14, 0, Math.PI * 2);
-        c.fillStyle = "#182a42";
-        c.fill();
-        c.strokeStyle = "#ffd65b";
-        c.lineWidth = 2;
-        c.stroke();
-        c.fillStyle = "#ffd65b";
-        c.beginPath();
-        c.moveTo(2, -10);
-        c.lineTo(-7, 2);
-        c.lineTo(-1, 2);
-        c.lineTo(-3, 10);
-        c.lineTo(7, -3);
-        c.lineTo(1, -3);
-        c.fill();
-      } else c.drawImage(crown, -12, -12, 24, 24);
-      c.rotate(Math.atan2(dy, dx));
-      c.fillStyle = boltOffscreen ? "#ffd65b" : "#fff";
-      c.beginPath();
-      c.moveTo(24, 0);
-      c.lineTo(17, -4);
-      c.lineTo(17, 4);
-      c.fill();
-      c.restore();
-    }
+  const radius = h < 540 ? 29 : 42,
+    mx = radius + 15,
+    my = radius + 15;
+  c.save();
+  c.translate(mx, my);
+  c.beginPath();
+  c.arc(0, 0, radius, 0, Math.PI * 2);
+  c.fillStyle = "#101c30dc";
+  c.fill();
+  c.strokeStyle = "#ff8795";
+  c.lineWidth = 1.5;
+  c.stroke();
+  for (const s of world.snakes) {
+    if (s.dead || s === world.player || s === lead) continue;
+    c.fillStyle = "#7990a6";
+    c.beginPath();
+    c.arc((s.x / R) * radius, (s.y / R) * radius, 1.2, 0, 7);
+    c.fill();
   }
+  if (tr) {
+    c.strokeStyle = "#ffd65b";
+    c.beginPath();
+    c.arc((tr.x / R) * radius, (tr.y / R) * radius, 3, 0, 7);
+    c.stroke();
+  }
+  if (lead)
+    c.drawImage(
+      crown,
+      (lead.x / R) * radius - 5,
+      (lead.y / R) * radius - 6,
+      10,
+      10,
+    );
+  c.fillStyle = "#fff";
+  c.beginPath();
+  c.arc((cx / R) * radius, (cy / R) * radius, 3, 0, 7);
+  c.fill();
+  c.restore();
+  if (Math.hypot(cx, cy) > R - 330) {
+    c.textAlign = "center";
+    c.font = "bold 13px Arial";
+    c.fillStyle = "#ffb1b5";
+    c.fillText("ARENA EDGE", w / 2, h - 24);
+  }
+  function marker(x: number, y: number, bolt: boolean, label: string) {
+    if (x >= left && x <= right && y >= top && y <= bottom) return;
+    const angle = Math.atan2(y - cy, x - cx),
+      ux = Math.cos(angle),
+      uy = Math.sin(angle);
+    const k = Math.min(
+      (w / 2 - (bolt ? 44 : 66)) / Math.max(0.001, Math.abs(ux)),
+      (h / 2 - (bolt ? 94 : 63)) / Math.max(0.001, Math.abs(uy)),
+    );
+    let screenX = w / 2 + ux * k,
+      screenY = h / 2 + uy * k;
+    // Keep guides readable beside the leaderboard and above touch controls.
+    if (screenX > w - 215 && screenY < (h < 540 ? 180 : 320)) screenX = w - 215;
+    if (screenY > h - 112 && (screenX < 124 || screenX > w - 124))
+      screenY = h - 112;
+    c.save();
+    c.translate(screenX, screenY);
+    c.fillStyle = "#101c30ed";
+    c.beginPath();
+    c.arc(0, 0, 15, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = bolt ? "#89efff" : "#ffdc69";
+    if (bolt) {
+      c.font = "bold 20px Arial";
+      c.textAlign = "center";
+      c.fillText("ϟ", 0, 7);
+    } else {
+      c.drawImage(crown, -13, -13, 26, 26);
+      c.textAlign = "center";
+      c.font = "bold 11px Arial";
+      c.strokeStyle = "#0d182b";
+      c.lineWidth = 3;
+      c.strokeText(label, 0, 28);
+      c.fillText(label, 0, 28);
+    }
+    c.rotate(
+      Math.atan2(
+        (y - cy) * zoom + h / 2 - screenY,
+        (x - cx) * zoom + w / 2 - screenX,
+      ),
+    );
+    c.beginPath();
+    c.moveTo(24, 0);
+    c.lineTo(16, -4);
+    c.lineTo(16, 4);
+    c.fill();
+    c.restore();
+  }
+  if (lead && lead !== world.player) marker(lead.x, lead.y, false, lead.name);
+  if (tr) marker(tr.x, tr.y, true, "");
 }

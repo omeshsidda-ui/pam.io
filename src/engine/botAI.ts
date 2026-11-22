@@ -32,7 +32,7 @@ function cutoff(s: Snake, target: Snake) {
     const dx = x - s.x,
       dy = y - s.y,
       angle = Math.atan2(dy, dx);
-    const turn = (Math.abs(angleDiff(angle, s.a)) * width(s)) / 72;
+    const turn = (Math.abs(angleDiff(angle, s.a)) * width(s)) / 96.75;
     const arrival = Math.hypot(dx, dy) / runSpeed + turn * 0.65;
     if (arrival <= t)
       return { angle, cost: t + turn * 0.4, boost: arrival > 0.24 };
