@@ -3,7 +3,7 @@ import type {World} from '../engine/world';
 import {width} from '../engine/physics';
 import {beads,orbs,crown,face} from './spriteCache';
 const canvas=document.querySelector<HTMLCanvasElement>('#arena')!,c=canvas.getContext('2d')!,map=document.querySelector<HTMLCanvasElement>('#map')!.getContext('2d')!;
-const tile=document.createElement('canvas');tile.width=84;tile.height=48;const t=tile.getContext('2d')!;t.strokeStyle='#272931';t.lineWidth=1;
+const tile=document.createElement('canvas');tile.width=84;tile.height=48;const t=tile.getContext('2d')!;t.strokeStyle='#223a30';t.lineWidth=1;
 for(let j=-2;j<4;j++)for(let i=-2;i<4;i++){let x=i*42,y=j*48+(i%2)*24;t.beginPath();for(let k=0;k<=6;k++){let a=k*Math.PI/3;t.lineTo(x+28*Math.cos(a),y+24/Math.sin(Math.PI/3)*Math.sin(a))}t.stroke()}
 const pattern=c.createPattern(tile,'repeat')!;let w=0,h=0,zoom=1,cx=0,cy=0;
 const stars=Array.from({length:180},(_,i)=>({x:((i*0.61803399)%1),y:((Math.sin(i*843.7)*92832)%1+1)%1,c:i%12,r:11+i%15}));
@@ -12,8 +12,8 @@ function demoSkin(x:number,y:number,skin:number,scale:number,rotate:number,name:
  for(let i=0;i<=62;i++){let u=i/62,px=(u-.5)*290+25*Math.sin(u*8+time*.13),py=Math.sin(u*(6.1+skin*.23)+time*.13+skin*.65)*52,r=(8+13*Math.min(1,u*4))*(.99+.03*Math.cos(i));c.drawImage(beads[skin][Math.floor(i/4)%2],px-r,py-r,r*2,r*2);if(i===62){a=Math.atan2(py-hy,px-hx);face(c,px,py,a,r)}hx=px;hy=py}c.translate(hx,hy);c.rotate(-rotate);c.fillStyle='#d3d2deb0';c.font='bold 11px monospace';c.textAlign='center';c.fillText(name,0,-31);c.restore()}
 export function draw(world:World,playing:boolean,f:number,time:number){
  const dpr=Math.min(devicePixelRatio,2);if(w!==innerWidth||h!==innerHeight||canvas.width!==Math.round(innerWidth*dpr)){w=innerWidth;h=innerHeight;canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}
- c.setTransform(dpr,0,0,dpr,0,0);c.fillStyle='#111219';c.fillRect(0,0,w,h);c.save();
- if(playing){const s=world.player;zoom+=(Math.max(.53,1.08-Math.log1p(s.mass/200)*.16)-zoom)*.035;cx=s.old[0].x+(s.x-s.old[0].x)*f;cy=s.old[0].y+(s.y-s.old[0].y)*f;c.translate(w/2+(Math.random()-.5)*world.shake,h/2+(Math.random()-.5)*world.shake);c.scale(zoom,zoom);c.translate(-cx,-cy)}
+ c.setTransform(dpr,0,0,dpr,0,0);c.fillStyle='#15291f';c.fillRect(0,0,w,h);c.save();
+ if(playing){const s=world.player;zoom+=(Math.max(.53,(Math.min(w,h)<600?.79:1.08)-Math.log1p(s.mass/200)*.16)-zoom)*.035;cx=s.old[0].x+(s.x-s.old[0].x)*f;cy=s.old[0].y+(s.y-s.old[0].y)*f;c.translate(w/2+(Math.random()-.5)*world.shake,h/2+(Math.random()-.5)*world.shake);c.scale(zoom,zoom);c.translate(-cx,-cy)}
  const left=playing?cx-w/(2*zoom):0,top=playing?cy-h/(2*zoom):0,vw=playing?w/zoom:w,vh=playing?h/zoom:h;
  c.fillStyle=pattern;c.fillRect(left-10,top-10,vw+20,vh+20);
  if(!playing){for(const p of stars)c.drawImage(orbs[p.c],p.x*w-p.r,p.y*h-p.r,p.r*2,p.r*2);
