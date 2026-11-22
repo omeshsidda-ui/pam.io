@@ -1,4 +1,4 @@
-import { R, angleDiff } from "../config";
+import { R, angleDiff, CHARGE_SECONDS } from "../config";
 import type { World } from "../engine/world";
 import type { Snake } from "../types";
 import { width } from "../engine/physics";
@@ -174,7 +174,7 @@ export function draw(world: World, live: boolean, f: number, time: number) {
       0,
       137,
       -Math.PI / 2,
-      -Math.PI / 2 + (Math.PI * 2 * tr.charge) / 2.5,
+      -Math.PI / 2 + (Math.PI * 2 * tr.charge) / CHARGE_SECONDS,
     );
     c.closePath();
     c.fill();
@@ -189,7 +189,7 @@ export function draw(world: World, live: boolean, f: number, time: number) {
       0,
       132,
       -Math.PI / 2,
-      -Math.PI / 2 + (Math.PI * 2 * tr.charge) / 2.5,
+      -Math.PI / 2 + (Math.PI * 2 * tr.charge) / CHARGE_SECONDS,
     );
     c.strokeStyle = "#ff4759";
     c.lineWidth = 10;
@@ -211,23 +211,44 @@ export function draw(world: World, live: boolean, f: number, time: number) {
     else c.fillRect(p.x, p.y, 4, 4);
   }
   c.restore();
-  if (lead && lead !== world.player) {
-    const dx = (lead.x - cx) * zoom,
-      dy = (lead.y - cy) * zoom,
-      k = Math.min(
-        (w / 2 - 30) / Math.max(1, Math.abs(dx)),
-        (h / 2 - 33) / Math.max(1, Math.abs(dy)),
-      );
+  // Prioritize the objective over the crown when both are beyond the screen.
+  const boltOffscreen =
+    tr && (tr.x < left || tr.x > right || tr.y < top || tr.y > bottom);
+  const marker = boltOffscreen ? tr : lead;
+  if (marker && marker !== world.player) {
+    const dx = (marker.x - cx) * zoom,
+      dy = (marker.y - cy) * zoom;
+    const k = Math.min(
+      (w / 2 - 34) / Math.max(1, Math.abs(dx)),
+      (h / 2 - 60) / Math.max(1, Math.abs(dy)),
+    );
     if (k < 1) {
       c.save();
       c.translate(w / 2 + dx * k, h / 2 + dy * k);
-      c.drawImage(crown, -12, -12, 24, 24);
+      if (boltOffscreen) {
+        c.beginPath();
+        c.arc(0, 0, 14, 0, Math.PI * 2);
+        c.fillStyle = "#182a42";
+        c.fill();
+        c.strokeStyle = "#ffd65b";
+        c.lineWidth = 2;
+        c.stroke();
+        c.fillStyle = "#ffd65b";
+        c.beginPath();
+        c.moveTo(2, -10);
+        c.lineTo(-7, 2);
+        c.lineTo(-1, 2);
+        c.lineTo(-3, 10);
+        c.lineTo(7, -3);
+        c.lineTo(1, -3);
+        c.fill();
+      } else c.drawImage(crown, -12, -12, 24, 24);
       c.rotate(Math.atan2(dy, dx));
-      c.fillStyle = "#fff";
+      c.fillStyle = boltOffscreen ? "#ffd65b" : "#fff";
       c.beginPath();
-      c.moveTo(22, 0);
-      c.lineTo(15, -4);
-      c.lineTo(15, 4);
+      c.moveTo(24, 0);
+      c.lineTo(17, -4);
+      c.lineTo(17, 4);
       c.fill();
       c.restore();
     }

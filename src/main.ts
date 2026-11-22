@@ -1,6 +1,6 @@
 import "./style.css";
 import { World } from "./engine/world";
-import { STEP } from "./config";
+import { STEP, CHARGE_SECONDS } from "./config";
 import { draw } from "./render/renderer";
 import { profile, save, progress } from "./storage";
 import { sound } from "./audio/sfx";
@@ -26,6 +26,26 @@ function rank() {
   if (pos > 0) bestRank = Math.min(bestRank || pos, pos);
   peakScore = Math.max(peakScore, Math.floor(world.player.mass));
 }
+const bossPanel = el("boss");
+const chargeBar = bossPanel.querySelector("div")!;
+const segments = Array.from(chargeBar.querySelectorAll("i"));
+function chargeHUD() {
+  const trap = world.trap;
+  bossPanel.hidden = !trap;
+  if (!trap) return;
+  const fraction = Math.min(1, trap.charge / CHARGE_SECONDS);
+  chargeBar.setAttribute("aria-valuenow", String(Math.round(100 * fraction)));
+  el("charge-label").textContent =
+    fraction > 0
+      ? "Charging · " + Math.floor(100 * fraction) + "%"
+      : "Find the bolt circle";
+  segments.forEach((seg, i) =>
+    seg.style.setProperty(
+      "--fill",
+      String(Math.max(0, Math.min(1, 3 * fraction - i))),
+    ),
+  );
+}
 function hud() {
   const rows = el("rows");
   rows.replaceChildren();
@@ -47,7 +67,6 @@ function hud() {
   const me = world.ranking.indexOf(world.player);
   if (me >= 10) row(me);
   el("hud").textContent = Math.floor(world.player.mass).toLocaleString();
-  el("boss").hidden = !world.trap;
 }
 function start() {
   if (portrait.matches) return;
@@ -70,6 +89,7 @@ function start() {
     "aria-expanded",
     String(!matchMedia("(pointer:coarse)").matches),
   );
+  chargeHUD();
   sound("play");
   hud();
 }
@@ -244,6 +264,7 @@ function step() {
   keyBoost = boost;
   world.player.boost = boost;
   world.update();
+  chargeHUD();
   rank();
   if (
     Math.floor(peakScore / 300) + 4 > profile.unlocked &&

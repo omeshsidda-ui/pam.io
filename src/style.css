@@ -515,10 +515,12 @@ progress {
 }
 #boss i {
   height: 8px;
-  background: #ff5962;
+  background: #483a4a;
+  overflow: hidden;
   flex: 1;
   border-radius: 5px;
 }
+#boss i::before {content:"";display:block;height:100%;background:#ffd65b;transform-origin:left;transform:scaleX(var(--fill,0))}
 #notice,
 #toast {
   position: absolute;
