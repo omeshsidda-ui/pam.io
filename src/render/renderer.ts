@@ -1,7 +1,7 @@
 import { R, angleDiff, CHARGE_SECONDS } from "../config";
 import type { World } from "../engine/world";
 import type { Snake } from "../types";
-import { playZoom } from "../engine/camera";
+import { playZoom, cameraEase, cameraShake } from "../engine/camera";
 import { width } from "../engine/physics";
 import { beads, orbs, crown, face, shadow, marking } from "./spriteCache";
 import { lobby } from "./lobby";
@@ -57,6 +57,7 @@ window.addEventListener("pam-theme", () => {
 let zoom = 1,
   cx = 0,
   cy = 0,
+  lastRenderTime = 0,
   left = 0,
   right = 0,
   top = 0,
@@ -68,8 +69,6 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
   const r = width(s),
     n = s.body.length;
   for (let pass = 0; pass < 2; pass++) {
-    let tailX = 0,
-      tailY = 0;
     for (let i = n - 1; i >= 0; i--) {
       const p = s.body[i],
         o = s.old[i],
@@ -97,14 +96,6 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
             );
         } else {
           const img = beads[s.skin][Math.floor(i / 4) % 2];
-          if (i < n - 1)
-            c.drawImage(
-              img,
-              (x + tailX) / 2 - rr,
-              (y + tailY) / 2 - rr,
-              2 * rr,
-              2 * rr,
-            );
           c.drawImage(img, x - rr, y - rr, 2 * rr, 2 * rr);
           if (!i) {
             face(
@@ -125,8 +116,6 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
           }
         }
       }
-      tailX = x;
-      tailY = y;
     }
   }
   for (let i = 4; i < n - 5; i += 5) {
@@ -153,6 +142,10 @@ export function draw(
   time: number,
   pullback = 0,
 ) {
+  const renderDt = lastRenderTime
+    ? Math.max(0, Math.min(time - lastRenderTime, 0.08))
+    : 1 / 60;
+  lastRenderTime = time;
   const w = innerWidth,
     h = innerHeight,
     dpr = Math.min(devicePixelRatio || 1, 2),
@@ -167,16 +160,15 @@ export function draw(
   c.save();
   if (live) {
     const s = world.player;
-    world.cameraZoom += (playZoom(s.mass, w, h) - world.cameraZoom) * 0.035;
+    world.cameraZoom +=
+      (playZoom(s.mass, w, h) - world.cameraZoom) * cameraEase(renderDt);
     const ease = pullback * pullback * (3 - 2 * pullback);
     zoom = world.cameraZoom * (1 - 0.25 * ease);
     if (s.dead) f = 1;
     cx = s.old[0].x + (s.x - s.old[0].x) * f;
     cy = s.old[0].y + (s.y - s.old[0].y) * f;
-    c.translate(
-      w / 2 + (Math.random() - 0.5) * world.shake,
-      h / 2 + (Math.random() - 0.5) * world.shake,
-    );
+    const shake = cameraShake(time, world.shake);
+    c.translate(w / 2 + shake.x, h / 2 + shake.y);
     c.scale(zoom, zoom);
     c.translate(-cx, -cy);
   }

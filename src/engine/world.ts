@@ -46,7 +46,12 @@ export class World {
   constructor() {
     this.player = this.spawn(0)!;
     for (let i = 1; i <= BOTS; i++) if (!this.spawn(i)) this.waiting.add(i);
-    while (this.food.length < FOOD) this.pellet();
+    // Give the opening a readable first route: a small, dense ring of food
+    // around the player, with the rest of the budget spread across the arena.
+    // Keeping this local to the initial fill lets normal replenishment remain
+    // evenly distributed as the match develops.
+    while (this.food.length < FOOD)
+      this.pellet(this.food.length < 120 ? this.player : undefined);
     this.index();
     this.rank();
   }
@@ -155,6 +160,7 @@ export class World {
       s.old[i].x = q.x;
       s.old[i].y = q.y;
     }
+    this.bodiesChanged = true;
     this.snakes.push(s);
     return s;
   }
@@ -162,21 +168,34 @@ export class World {
     this.nextBossAttempt = this.tick + 30;
     return this.spawn(33, true);
   }
-  pellet() {
+  pellet(near?: Snake) {
+    let point;
+    if (near) {
+      const angle = rand(0, 2 * Math.PI);
+      // sqrt sampling keeps the local ring uniform by area rather than
+      // creating an artificial pile at its inner edge.
+      const radius = Math.sqrt(rand(0.12, 1)) * 520;
+      point = {
+        x: near.x + Math.cos(angle) * radius,
+        y: near.y + Math.sin(angle) * radius,
+      };
+    } else point = spot();
     this.food.push({
-      ...spot(),
+      ...point,
       v: 2,
       c: Math.floor(rand(0, 12)),
       loot: false,
     });
   }
+  private bodiesChanged = true;
   segments: Segment[] = [];
   index() {
     this.fg.clear();
     for (const p of this.food) this.fg.add(p);
-    this.indexBodies();
+    if (this.bodiesChanged) this.indexBodies();
   }
   indexBodies() {
+    this.bodiesChanged = false;
     let n = 0;
     this.bg.clear();
     for (const s of this.snakes)
@@ -226,6 +245,7 @@ export class World {
   die(s: Snake, k?: Snake) {
     if (s.dead) return;
     s.dead = true;
+    this.bodiesChanged = true;
     for (let i = 0; i < s.body.length; i += 2) {
       const p = s.body[i];
       this.food.push({

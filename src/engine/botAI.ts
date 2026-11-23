@@ -175,7 +175,9 @@ export function decide(
       Math.random() * 0.18;
     if (score > best) {
       best = score;
-      s.aim = a + rand(-1, 1) * (0.085 - 0.048 * skill);
+      // Keep a little variation for natural movement, while avoiding the
+      // sector-to-sector aim jitter that becomes conspicuous on broad turns.
+      s.aim = a + rand(-1, 1) * (0.035 - 0.02 * skill);
     }
   }
   if (best < -3) s.boost = true;

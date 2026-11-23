@@ -68,6 +68,8 @@ Deploy `dist/` to any static host.
 
 ## Docs
 
+- [Snake.io comparison and movement plan](docs/snake-io-comparison.md)
+
 - [Player flow and orientation](snake.io/01-user-flow-and-orientation.md)
 - [Home and skin shop](snake.io/02-home-and-skin-shop.md)
 - [Gameplay HUD and HD rendering](snake.io/03-gameplay-hud-and-hd-visuals.md)
