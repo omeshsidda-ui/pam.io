@@ -33,9 +33,12 @@ export const beads = skins.map((s, i) =>
       c.beginPath();
       c.arc(96, 96, 92, 0, Math.PI * 2);
       c.fill();
-      const rim=c.createRadialGradient(82,74,32,96,96,92);
-      rim.addColorStop(0,"#ffffff13");rim.addColorStop(.72,"#15112300");rim.addColorStop(1,"#15112334");
-      c.fillStyle=rim;c.fill();
+      const rim = c.createRadialGradient(82, 74, 32, 96, 96, 92);
+      rim.addColorStop(0, "#ffffff13");
+      rim.addColorStop(0.72, "#15112300");
+      rim.addColorStop(1, "#15112334");
+      c.fillStyle = rim;
+      c.fill();
       c.fillStyle = band ? "#ffffff44" : "#ffffff28";
       c.beginPath();
       c.ellipse(74, 49, 29, 10, -0.38, 0, 7);
@@ -196,6 +199,29 @@ export const shadow = sprite(192, (c) => {
   c.fillStyle = g;
   c.fillRect(0, 0, 192, 192);
 });
+// Twin tapered strokes sit outside the neck, leaving the head outline visible.
+export const boostWake = skins.map((s) =>
+  sprite(192, (c) => {
+    for (const sign of [-1, 1]) {
+      c.save();
+      c.translate(0, 96);
+      c.scale(1, sign);
+      const ink = c.createLinearGradient(6, 0, 164, 0);
+      ink.addColorStop(0, s[1] + "00");
+      ink.addColorStop(0.55, s[1] + "aa");
+      ink.addColorStop(1, "#fffae6");
+      c.fillStyle = ink;
+      c.beginPath();
+      c.moveTo(6, 75);
+      c.quadraticCurveTo(107, 46, 155, 58);
+      c.quadraticCurveTo(182, 61, 190, 42);
+      c.quadraticCurveTo(186, 65, 154, 65);
+      c.quadraticCurveTo(103, 54, 6, 75);
+      c.fill();
+      c.restore();
+    }
+  }),
+);
 export const orbs = skins.map((s) =>
   sprite(128, (c) => {
     const glow = c.createRadialGradient(64, 64, 10, 64, 64, 60);

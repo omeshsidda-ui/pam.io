@@ -96,6 +96,7 @@ function start() {
     .matches
     ? "⌄"
     : "⌃";
+  el("boost").classList.remove("boosting");
   chargeHUD();
   sound("play");
   hud();
@@ -273,10 +274,12 @@ function step() {
     keys.has("Space") ||
     keys.has("ShiftLeft") ||
     keys.has("ShiftRight");
-  if (boost && !keyBoost && world.player.mass >= 35) sound("boost");
-  keyBoost = boost;
   world.player.boost = boost;
   world.update();
+  const activeBoost = world.player.boost && !world.player.dead;
+  if (activeBoost && !keyBoost) sound("boost");
+  keyBoost = activeBoost;
+  el("boost").classList.toggle("boosting", activeBoost);
   if (world.player.dead) document.body.classList.add("round-ending");
   chargeHUD();
   rank();
@@ -310,9 +313,12 @@ function frame(now: number) {
     toastUntil = now + 2400;
     el("toast").textContent = "Skin unlocked!";
   }
-  if (now > toastUntil) el("toast").textContent = "";
-  el("notice").textContent =
-    playing && world.noticeTime > 0 ? world.notice : "";
+  if (toastUntil && now > toastUntil) {
+    el("toast").textContent = "";
+    toastUntil = 0;
+  }
+  const notice = playing && world.noticeTime > 0 ? world.notice : "";
+  if (el("notice").textContent !== notice) el("notice").textContent = notice;
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

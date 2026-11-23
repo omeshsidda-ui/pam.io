@@ -3,7 +3,15 @@ import type { World } from "../engine/world";
 import type { Snake } from "../types";
 import { playZoom, cameraEase, cameraShake } from "../engine/camera";
 import { width } from "../engine/physics";
-import { beads, orbs, crown, face, shadow, marking } from "./spriteCache";
+import {
+  beads,
+  orbs,
+  crown,
+  face,
+  shadow,
+  marking,
+  boostWake,
+} from "./spriteCache";
 import { lobby } from "./lobby";
 const canvas = document.querySelector<HTMLCanvasElement>("#arena")!,
   c = canvas.getContext("2d")!;
@@ -78,14 +86,19 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
         r * (0.16 + 0.84 * Math.sin((Math.min(1, (n - i) / 10) * Math.PI) / 2));
       if (demo || visible(x, y)) {
         if (pass === 0) {
-          if (s.boost)
+          if (s.boost && i === 0) {
+            c.save();
+            c.translate(x, y);
+            c.rotate(s.prevA + angleDiff(s.a, s.prevA) * f);
             c.drawImage(
-              orbs[s.skin],
-              x - rr * 2.3,
-              y - rr * 2.3,
-              rr * 4.6,
-              rr * 4.6,
+              boostWake[s.skin],
+              -r * 4.1,
+              -r * 1.9,
+              r * 4.6,
+              r * 3.8,
             );
+            c.restore();
+          }
           if (i % 2 === 0)
             c.drawImage(
               shadow,
@@ -130,7 +143,10 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
       s.skin,
       x,
       y,
-      Math.atan2(ahead.y - p.y, ahead.x - p.x),
+      Math.atan2(
+        s.old[i - 1].y + (ahead.y - s.old[i - 1].y) * f - y,
+        s.old[i - 1].x + (ahead.x - s.old[i - 1].x) * f - x,
+      ),
       r * 0.87,
     );
   }
@@ -209,7 +225,10 @@ export function draw(
   for (const p of world.food) {
     if (!visible(p.x, p.y)) continue;
     const r = p.loot ? 25 + 3 * Math.sin(time * 5 + p.x) : 18;
-    c.drawImage(orbs[p.c], p.x - r, p.y - r, r * 2, r * 2);
+    const blend = p.movedAt === world.tick ? 1 - f : 0;
+    const x = p.x + ((p.previousX ?? p.x) - p.x) * blend,
+      y = p.y + ((p.previousY ?? p.y) - p.y) * blend;
+    c.drawImage(orbs[p.c], x - r, y - r, r * 2, r * 2);
   }
   const tr = world.trap;
   if (tr) {

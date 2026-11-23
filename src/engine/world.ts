@@ -46,12 +46,8 @@ export class World {
   constructor() {
     this.player = this.spawn(0)!;
     for (let i = 1; i <= BOTS; i++) if (!this.spawn(i)) this.waiting.add(i);
-    // Give the opening a readable first route: a small, dense ring of food
-    // around the player, with the rest of the budget spread across the arena.
-    // Keeping this local to the initial fill lets normal replenishment remain
-    // evenly distributed as the match develops.
-    while (this.food.length < FOOD)
-      this.pellet(this.food.length < 120 ? this.player : undefined);
+    this.seedOpeningFood();
+    while (this.food.length < FOOD) this.pellet();
     this.index();
     this.rank();
   }
@@ -168,24 +164,37 @@ export class World {
     this.nextBossAttempt = this.tick + 30;
     return this.spawn(33, true);
   }
-  pellet(near?: Snake) {
-    let point;
-    if (near) {
-      const angle = rand(0, 2 * Math.PI);
-      // sqrt sampling keeps the local ring uniform by area rather than
-      // creating an artificial pile at its inner edge.
-      const radius = Math.sqrt(rand(0.12, 1)) * 520;
-      point = {
-        x: near.x + Math.cos(angle) * radius,
-        y: near.y + Math.sin(angle) * radius,
-      };
-    } else point = spot();
-    this.food.push({
-      ...point,
-      v: 2,
-      c: Math.floor(rand(0, 12)),
-      loot: false,
-    });
+  private seedOpeningFood() {
+    const player = this.player;
+    // Three short arcs invite a turn in either direction. Keep gaps large
+    // enough that collecting one trail requires actively following it.
+    for (const offset of [-0.85, 0, 0.85]) {
+      const direction = player.a + offset,
+        bend = (offset || rand(-0.6, 0.6)) * 0.55;
+      const color = Math.floor(rand(0, skins.length));
+      for (let i = 0; i < 7; i++) {
+        const radius = 105 + i * 34,
+          angle = direction + (bend * i) / 6;
+        this.pellet(
+          {
+            x: player.x + Math.cos(angle) * radius,
+            y: player.y + Math.sin(angle) * radius,
+          },
+          color,
+        );
+      }
+    }
+    while (this.food.length < 120) {
+      const angle = rand(0, Math.PI * 2),
+        radius = Math.sqrt(rand(0.12, 1)) * 520;
+      this.pellet({
+        x: player.x + Math.cos(angle) * radius,
+        y: player.y + Math.sin(angle) * radius,
+      });
+    }
+  }
+  pellet(point = spot(), color = Math.floor(rand(0, skins.length))) {
+    this.food.push({ ...point, v: 2, c: color, loot: false });
   }
   private bodiesChanged = true;
   segments: Segment[] = [];
@@ -385,6 +394,9 @@ export class World {
         }
         p.v = 0;
       } else {
+        p.previousX = p.x;
+        p.previousY = p.y;
+        p.movedAt = this.tick;
         p.x += (s.x - p.x) * 0.09;
         p.y += (s.y - p.y) * 0.09;
       }

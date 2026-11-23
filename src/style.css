@@ -946,3 +946,7 @@ kbd {
     margin: 8px 0;
   }
 }
+
+@media (pointer: coarse) {
+  #boost.boosting { background: var(--accent); color: #30251d; }
+}

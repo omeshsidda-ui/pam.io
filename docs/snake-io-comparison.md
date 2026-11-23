@@ -23,9 +23,11 @@ The strongest visual difference is visible even in a still. Look at the pink hea
 | Camera | Zoom moved a fixed fraction **per frame**, so it settled faster on a 120 Hz screen. Random shake picked an unrelated offset each frame. | Zoom uses elapsed seconds. Shake follows a continuous, decaying motion. |
 | Frame work | The world rebuilt the body grid before collision checks and again after an ordinary tick, even when the same bodies remained in the same positions. | Reuse the collision grid for the next bot decision. Refresh it on membership changes. Animated eyes use cached artwork. |
 | Skins | Color carried much of the identity at gameplay size. | All twelve skins have individual markings. Bumble has dark bands and antennae, Dragon has swept horns and slit pupils, and Glacier has pale bands and side fins. Cosmetic details leave hitboxes alone. |
-| Opening | Uniform random food could leave little to steer toward in the first second. | Place 120 of the initial 1,100 ambient pellets about 180–520 world units from spawn. Later food replenishment stays arena-wide. This is our pacing choice. |
+| Opening | Uniform random food could leave little to steer toward in the first second. | Use 21 of the initial 1,100 ambient pellets for three short trails ahead of the player, with another 99 scattered around the opening. Later food replenishment stays arena-wide. This is our pacing choice. |
 
 ![Twelve original pam.io skins rendered with the in-game preview](skin-lineup.webp)
+
+Boost now draws two tapered strokes beside the active snake and plays a short rush of air on engagement. The touch button lights up while the snake is actually boosting. Body markings rotate with the interpolated curve, and nearby food moves between simulation positions as it is pulled in.
 
 ## What we could verify
 
