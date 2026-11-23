@@ -402,6 +402,32 @@ export class World {
       }
     }
   }
+  private replenishAmbientFood() {
+    const ambient = this.food.reduce(
+      (count, p) => count + Number(!p.loot && p.v === 2),
+      0,
+    );
+    let missing = FOOD - ambient;
+    if (missing <= 0) return;
+    // Leave a margin for camera interpolation, shake, and movement toward the edge.
+    const zoom = Math.min(
+      this.cameraZoom,
+      playZoom(this.player.mass, innerWidth, innerHeight),
+    );
+    const halfW = innerWidth / (2 * zoom) + 160;
+    const halfH = innerHeight / (2 * zoom) + 160;
+    // Carry any deficit forward if there is little unseen arena to sample.
+    for (let attempt = 0; attempt < 96 && missing > 0; attempt++) {
+      const point = spot();
+      if (
+        Math.abs(point.x - this.player.x) <= halfW &&
+        Math.abs(point.y - this.player.y) <= halfH
+      )
+        continue;
+      this.pellet(point);
+      missing--;
+    }
+  }
   private compactDistantFood() {
     const halfW = innerWidth / (2 * this.cameraZoom) + 240;
     const halfH = innerHeight / (2 * this.cameraZoom) + 240;
@@ -453,13 +479,7 @@ export class World {
     this.food = this.food.filter((p) => p.v > 0);
     if (this.tick % 60 === 0 && this.food.length > 2000)
       this.compactDistantFood();
-    if (this.tick % 30 === 0) {
-      let ambient = this.food.reduce(
-        (n, p) => n + Number(!p.loot && p.v === 2),
-        0,
-      );
-      while (ambient++ < FOOD) this.pellet();
-    }
+    if (this.tick % 30 === 0) this.replenishAmbientFood();
     for (const s of this.snakes.filter((s) => s.dead && s.id)) {
       this.snakes.splice(this.snakes.indexOf(s), 1);
       if (!s.boss) this.waiting.add(s.id);
