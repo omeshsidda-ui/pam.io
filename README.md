@@ -1,82 +1,79 @@
-# pam.io
+<h1 align="center">pam.io</h1>
 
-pam.io is a student-built snake arena where every rival is a bot running in your browser.
-A spatial grid keeps collision checks local, and Canvas draws each frame from cached sprites.
+<p align="center">
+  A student-built snake arena that runs entirely in your browser.<br>
+  Collect orbs, outmaneuver rival bots, and climb the leaderboard.
+</p>
 
-[Play pam.io](https://pam-io.vercel.app) · [Quick start](#quick-start) · [Docs](#docs)
+<p align="center">
+  <strong><a href="https://pam-io.vercel.app">Play pam.io</a></strong> ·
+  <a href="#controls">Controls</a> ·
+  <a href="#run-locally">Run locally</a> ·
+  <a href="#contributing">Contribute</a>
+</p>
 
-![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square)
-![Canvas](https://img.shields.io/badge/Canvas-2D-444444?style=flat-square)
-[![MIT License](https://img.shields.io/badge/license-MIT-377057?style=flat-square)](LICENSE)
+[![A round of pam.io showing two snakes, glowing orbs, a minimap, and the leaderboard](docs/arena.webp)](https://pam-io.vercel.app)
 
-[![A live round of pam.io with the arena map, crowned leader indicator, and leaderboard](docs/arena.webp)](https://pam-io.vercel.app)
+## Controls
 
-## What you get
+| Action | Desktop | Mobile (landscape) |
+| --- | --- | --- |
+| Steer | Move the mouse or use **WASD** or the **arrow keys** | Drag the on-screen joystick |
+| Boost | Hold **left mouse**, **Space**, or **Shift** | Hold the boost button |
 
-- **Five bot personalities.** Hunters cut across your path. Trappers circle. Scavengers rush the orbs left behind.
-- **HD Canvas.** Snakes move smoothly between simulation ticks and render at up to 2× pixel density.
-- **King Cobra.** Reach first place or score 1,500 to trigger the boss hunt. Hold the bolt circle to fire.
-- **Twelve skins.** Score and kill milestones unlock skins. Your browser remembers your pick.
-- **Landscape controls.** Steer with one thumb and boost with the other. Swap sides for left-handed play.
+On mobile, you can swap control sides in Settings.
 
-## How it works
+## In the arena
 
-```mermaid
-flowchart LR
-    Input["Mouse, keys or touch"] --> Tick["60 Hz simulation"]
-    Bots["Bot decisions"] --> Tick
-    Tick --> World["Arena state"]
-    World -->|Nearby food and snakes| Bots
-    World --> Draw["Canvas frame"]
-```
+- **Five bot personalities.** Hunters cut across your path, trappers circle, and scavengers rush for dropped orbs.
+- **King Cobra.** Reach first place or score 1,500 to trigger the boss hunt. Find the bolt circle and hold it to fire.
+- **Twelve skins.** Unlock skins through score and kill milestones. Your browser remembers your selection.
 
-Every tick, the game moves all snakes before it resolves hits.
-Bots look up nearby food and rivals when it’s time to choose a direction.
-Between ticks, Canvas draws the snakes partway between their last two positions.
+![The twelve unlockable snake skins, from Viper and Bubblegum to Frost and Prism](docs/skin-lineup.webp)
 
-## What's in this repo
+## Run locally
 
-```text
-src/                  Game loop, input, menus, themes, and saved progress
-  engine/             Movement, collisions, bot decisions, and difficulty
-  render/             Arena, camera view, and cached sprites
-  audio/              Sound effects generated with Web Audio
-snake.io/             Snake.io design reference guides
-  wireframes/         Screen layouts
-  screenshots/        Reference images and their sources
-```
-
-## Quick start
-
-From a clone of this repo, use Node.js LTS and npm.
+You’ll need Node.js LTS and npm.
 
 ```sh
+git clone https://github.com/omeshsidda-ui/pam.io.git
+cd pam.io
 npm ci
 npm run dev
 ```
 
-Open the URL Vite prints. Use the mouse or WASD to steer. Hold Space to boost.
-
-To build and serve the production version, stop the dev server and run the commands below.
+Open the URL printed by Vite. To type-check the game and preview the production build, run:
 
 ```sh
 npm run build
 npm run preview
 ```
 
-Deploy `dist/` to any static host.
+The build writes static files to `dist/`.
 
-## Docs
+## How it works
 
-- [Snake.io comparison and movement plan](docs/snake-io-comparison.md)
+TypeScript runs the simulation at 60 Hz. Each tick moves the snakes before resolving collisions, and a spatial grid keeps nearby food and rival lookups local. The Canvas 2D renderer interpolates between ticks and reuses cached sprites at up to 2× pixel density.
 
-- [Player flow and orientation](snake.io/01-user-flow-and-orientation.md)
-- [Home and skin shop](snake.io/02-home-and-skin-shop.md)
-- [Gameplay HUD and HD rendering](snake.io/03-gameplay-hud-and-hd-visuals.md)
-- [Game over and visual style](snake.io/04-gameover-popups-and-style.md)
+| Area | Where to look |
+| --- | --- |
+| Movement, collisions, bot AI, and difficulty | [`src/engine/`](src/engine/) |
+| Canvas rendering and sprites | [`src/render/`](src/render/) |
+| Input, timing, and round transitions | [`src/main.ts`](src/main.ts) |
+| Settings and saved progress | [`src/storage.ts`](src/storage.ts) |
+| Sound effects | [`src/audio/`](src/audio/) |
+
+## Design docs
+
+- [Movement and Snake.io comparison](docs/snake-io-comparison.md)
+- [Player flow and orientation](snake.io/01-user-flow-and-orientation.md) · [Home and skin shop](snake.io/02-home-and-skin-shop.md)
+- [Gameplay HUD and rendering](snake.io/03-gameplay-hud-and-hd-visuals.md) · [Game over and visual style](snake.io/04-gameover-popups-and-style.md)
 - [Wireframes](snake.io/wireframes/) · [Screenshot sources](snake.io/screenshots/SCREENSHOT_MANIFEST.md)
 
-## Status & License
+## Contributing
 
-Playable on desktop and mobile. The next milestone is open for suggestions in [Issues](https://github.com/omeshsidda-ui/pam.io/issues).
-Original code uses the [MIT License](LICENSE). Fonts and reference art have [separate terms](THIRD_PARTY_NOTICES.md).
+Gameplay feedback and focused fixes are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to reproduce a bug, verify a change, and open a PR. Share feedback in [GitHub Issues](https://github.com/omeshsidda-ui/pam.io/issues).
+
+## License
+
+The original code is [MIT licensed](LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md) for fonts and reference art.
