@@ -12,7 +12,7 @@ import { Difficulty } from "./difficulty";
 import { playZoom } from "./camera";
 import { Grid } from "./spatialGrid";
 import { move, width } from "./physics";
-import { decide } from "./botAI";
+import { callScavengers, decide } from "./botAI";
 import type { Snake, Pellet, Segment, Particle, Trap } from "../types";
 import { sound } from "../audio/sfx";
 import { profile, progress } from "../storage";
@@ -256,9 +256,10 @@ export class World {
     if (s.dead) return;
     s.dead = true;
     this.bodiesChanged = true;
+    const drops: Pellet[] = [];
     for (let i = 0; i < s.body.length; i += 2) {
       const p = s.body[i];
-      this.food.push({
+      drops.push({
         x: p.x + rand(-9, 9),
         y: p.y + rand(-9, 9),
         v: s.boss ? 18 : 6,
@@ -266,6 +267,8 @@ export class World {
         loot: true,
       });
     }
+    this.food.push(...drops);
+    callScavengers(this.snakes, drops, this.tick, this.difficulty.level);
     for (let i = 0; i < 18; i++) this.fx(s.x, s.y, skins[s.skin][1]);
     if (k) k.kills++;
     if (k === this.player) {
@@ -444,6 +447,7 @@ export class World {
       const pile = piles.get(key);
       if (pile) {
         pile.v += p.v;
+        p.v = 0;
         return false;
       }
       piles.set(key, p);
@@ -463,6 +467,7 @@ export class World {
           this.bg,
           leader === s ? this.player : leader,
           this.difficulty.level,
+          this.tick,
         );
     for (const s of this.snakes) {
       if (s.dead) continue;
@@ -496,6 +501,12 @@ export class World {
         this.tick,
         this.ranking.indexOf(this.player) + 1,
         this.ranking.length,
+        this.snakes.some(
+          (s) =>
+            s.id &&
+            !s.dead &&
+            Math.hypot(s.x - this.player.x, s.y - this.player.y) < 240,
+        ),
       );
     if (
       !this.player.dead &&

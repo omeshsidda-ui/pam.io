@@ -1,4 +1,4 @@
-import { R, rand, SECTORS, angleDiff, SPEED, BOOST } from "../config";
+import { STEP, R, rand, SECTORS, angleDiff, SPEED, BOOST } from "../config";
 import type { Snake, Pellet, Segment } from "../types";
 import type { Grid } from "./spatialGrid";
 import { width, turnRate } from "./physics";
@@ -73,12 +73,80 @@ function coil(s: Snake, target: Snake) {
   return angle + state.direction * (Math.PI / 2 + radial);
 }
 
+const rushes = new WeakMap<Snake, { pellet: Pellet; until: number }>();
+const attackAfter = new WeakMap<Snake, number>();
+
+// Each responder approaches the part of the trail closest to its own head.
+export function callScavengers(
+  snakes: Snake[],
+  drops: Pellet[],
+  tick: number,
+  skill: number,
+) {
+  const reach = 480 + 300 * skill;
+  const candidates = [];
+  for (const s of snakes) {
+    if (!s.id || s.dead || s.boss) continue;
+    let nearest: Pellet | undefined;
+    let distance = reach;
+    for (const p of drops) {
+      const d = Math.hypot(s.x - p.x, s.y - p.y);
+      if (d < distance) {
+        nearest = p;
+        distance = d;
+      }
+    }
+    if (nearest) {
+      const priority = distance * (s.role === 1 || s.role === 4 ? 0.75 : 1);
+      candidates.push({ s, nearest, priority });
+    }
+  }
+  candidates.sort((a, b) => a.priority - b.priority);
+  const count = Math.min(
+    2 + Math.round(skill * 4),
+    Math.ceil(drops.length / 5),
+  );
+  for (const { s, nearest } of candidates.slice(0, count)) {
+    rushes.set(s, { pellet: nearest, until: tick + 150 });
+    s.think = Math.min(s.think, 0.12);
+  }
+}
+
+// Sample a reachable arc, including the distance travelled before a broad turn completes.
+function safeSteps(
+  s: Snake,
+  aim: number,
+  boosting: boolean,
+  body: Grid<Segment>,
+) {
+  let { x, y, a } = s;
+  const dt = 0.075;
+  const turn = turnRate(s) * dt;
+  const stride = SPEED * (boosting ? BOOST : 1) * dt;
+  const radius = width(s);
+  for (let step = 0; step < 5; step++) {
+    a += Math.max(-turn, Math.min(turn, angleDiff(aim, a)));
+    x += Math.cos(a) * stride;
+    y += Math.sin(a) * stride;
+    if (Math.hypot(x, y) > R - radius) return step;
+    let blocked = false;
+    body.near(x, y, radius + 50, (p) => {
+      if (!blocked && p.s !== s && !p.s.dead)
+        blocked =
+          Math.hypot(x - p.x, y - p.y) < radius + width(p.s) + stride * 0.3;
+    });
+    if (blocked) return step;
+  }
+  return 5;
+}
+
 export function decide(
   s: Snake,
   food: Grid<Pellet>,
   body: Grid<Segment>,
   leader: Snake,
   skill = 0.4,
+  tick = 0,
 ) {
   const open = new Float32Array(SECTORS).fill(220),
     value = new Float32Array(SECTORS);
@@ -87,6 +155,9 @@ export function decide(
     bestCost = Infinity,
     attackBoost = false,
     loot = false;
+  const rush = rushes.get(s);
+  const drop =
+    rush && tick < rush.until && rush.pellet.v > 0 ? rush.pellet : undefined;
   const vision = 320 + 160 * skill;
   body.near(s.x, s.y, vision, (p) => {
     if (p.s === s || p.s.dead) return;
@@ -96,6 +167,7 @@ export function decide(
       i = sector(Math.atan2(dy, dx));
     open[i] = Math.min(open[i], d);
     if (p.i !== 0 || s.boss || d > vision) return;
+    if (drop || (p.s.id === 0 && tick < (attackAfter.get(s) ?? 0))) return;
     // A confident hunter can cut across a bigger rival from the side.
     // Keep head-on and tail-chase attempts restricted to smaller prey.
     const lateral = Math.abs(dx * Math.sin(p.s.a) - dy * Math.cos(p.s.a));
@@ -141,6 +213,7 @@ export function decide(
     );
     attackBoost = true;
   }
+  const leftPlayer = targets.get(s)?.id === 0 && prey?.id !== 0;
   if (prey) {
     targets.set(s, prey);
     if (!s.boss && s.role === 2) goal = coil(s, prey);
@@ -148,7 +221,12 @@ export function decide(
     targets.delete(s);
     coils.delete(s);
   }
-  s.boost = prey ? attackBoost : loot && (s.role === 1 || s.role === 4);
+  if (drop) goal = Math.atan2(drop.y - s.y, drop.x - s.x);
+  s.boost = drop
+    ? s.mass >= 35
+    : prey
+      ? attackBoost
+      : loot && (s.role === 1 || s.role === 4);
   const lookahead = 145 + skill * 70 + (s.boost ? 35 : 0);
   for (let i = 0; i < SECTORS; i++) {
     const a = (i * TAU) / SECTORS;
@@ -161,7 +239,8 @@ export function decide(
   let best = -Infinity;
   for (let i = 0; i < SECTORS; i++) {
     const a = (i * TAU) / SECTORS,
-      margin = (s.role === 3 ? 135 : s.boost ? 75 : 98) + skill * 28;
+      margin =
+        (s.role === 3 ? 135 : s.boost ? (s.boss ? 75 : 128) : 98) + skill * 28;
     const clear = Math.min(
       open[i],
       open[(i + SECTORS - 1) % SECTORS] + 28,
@@ -169,9 +248,9 @@ export function decide(
     );
     const score =
       Math.min(0, clear - margin) * 0.14 +
-      Math.cos(angleDiff(a, goal)) * (prey ? 3.5 : 0.5) +
+      Math.cos(angleDiff(a, goal)) * (prey || drop ? 3.5 : 0.5) +
       Math.cos(a - s.a) * 0.6 +
-      Math.min(value[i], 0.7) * (prey ? 0.6 : 8) +
+      Math.min(value[i], 0.7) * (prey || drop ? 0.6 : 8) +
       Math.random() * 0.18;
     if (score > best) {
       best = score;
@@ -180,6 +259,25 @@ export function decide(
       s.aim = a + rand(-1, 1) * (0.035 - 0.02 * skill);
     }
   }
-  if (best < -3) s.boost = true;
+  if (s.boss && best < -3) s.boost = true;
+  const abort =
+    !s.boss &&
+    (s.boost || prey || drop || best < -3) &&
+    safeSteps(s, s.aim, s.boost, body) < 5;
+  if (abort) {
+    s.boost = false;
+    let clearance = safeSteps(s, s.aim, false, body);
+    for (const offset of [-Math.PI / 2, Math.PI / 2]) {
+      const aim = s.a + offset;
+      const steps = safeSteps(s, aim, false, body);
+      if (steps > clearance) {
+        clearance = steps;
+        s.aim = aim;
+      }
+    }
+    targets.delete(s);
+  }
+  if (leftPlayer || (abort && prey?.id === 0))
+    attackAfter.set(s, tick + (3 - 2.4 * skill) / STEP);
   s.think = rand(0.18, 0.28) * (1 - 0.4 * skill);
 }

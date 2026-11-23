@@ -14,14 +14,21 @@ export class Difficulty {
   constructor(private baseline: number) {
     this.level = baseline * 0.78;
   }
-  sample(player: Snake, tick: number, rank: number, population: number) {
+  sample(
+    player: Snake,
+    tick: number,
+    rank: number,
+    population: number,
+    rivalNearby: boolean,
+  ) {
     if (tick % 120 !== 0 || player.dead) return;
     const growth = unit((player.mass - this.lastMass) / 34);
     const kills = unit(player.kills - this.lastKills);
     this.lastKills = player.kills;
     this.lastMass = player.mass;
     this.recentForm =
-      0.84 * this.recentForm + 0.16 * (growth * 0.65 + kills * 0.35);
+      0.84 * this.recentForm +
+      0.16 * (growth * 0.25 + kills * 0.15 + Number(rivalNearby) * 0.6);
     this.crownSeconds =
       rank === 1
         ? Math.min(20, this.crownSeconds + 2)
@@ -32,10 +39,10 @@ export class Difficulty {
       0.19 +
       0.28 * this.baseline +
       warmup *
-        (0.32 * climb * climb +
+        (0.38 * climb * climb +
           0.32 * this.recentForm +
           (0.18 * this.crownSeconds) / 20 +
-          0.12 * unit(player.kills / 4));
+          0.06 * unit(player.kills / 4));
     this.level += Math.max(
       -0.035,
       Math.min(0.027, (Math.min(0.94, target) - this.level) * 0.24),
