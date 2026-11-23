@@ -45,4 +45,4 @@ The old renderer resampled the full-screen hex floor every frame and drew the ar
 
 In two before-and-after runs at 1920 × 1080 in headless Chromium, the slowest 5% of animation callbacks started at intervals of 50–67 ms or longer before the change. The 95th percentile fell to 16.7 ms in both updated runs. Of 675 intervals in the updated runs, one exceeded 25 ms. This measures browser callbacks during play. Physical display timing and Kooapps’ frame rate were not measured.
 
-All twelve skins now have original face paint, textured bodies and shaped tails. The shop portrait enlarges the same face you see in the arena.
+All twelve skins now have original face paint, distinct head silhouettes and textured bodies with full-width, rounded ends. The shop portrait enlarges the same face you see in the arena.

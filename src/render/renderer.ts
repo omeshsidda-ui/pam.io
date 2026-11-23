@@ -11,7 +11,6 @@ import {
   shadow,
   marking,
   boostWake,
-  tail,
 } from "./spriteCache";
 import { lobby } from "./lobby";
 const canvas = document.querySelector<HTMLCanvasElement>("#arena")!,
@@ -117,8 +116,6 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
         o = s.old[i],
         x = o.x + (p.x - o.x) * f,
         y = o.y + (p.y - o.y) * f;
-      const rr =
-        r * (0.16 + 0.84 * Math.sin((Math.min(1, (n - i) / 10) * Math.PI) / 2));
       if (demo || visible(x, y)) {
         if (pass === 0) {
           if (s.boost && i === 0) {
@@ -137,29 +134,14 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
           if (i % 2 === 0)
             c.drawImage(
               shadow,
-              x - rr * 1.4,
-              y - rr * 0.96,
-              rr * 2.8,
-              rr * 2.8,
+              x - r * 1.4,
+              y - r * 0.96,
+              r * 2.8,
+              r * 2.8,
             );
         } else {
-          if (i === n - 1 && i > 0) {
-            const front = s.body[i - 1],
-              prior = s.old[i - 1];
-            tail(
-              c,
-              x,
-              y,
-              Math.atan2(
-                prior.y + (front.y - prior.y) * f - y,
-                prior.x + (front.x - prior.x) * f - x,
-              ),
-              r * 0.75,
-              s.skin,
-            );
-          }
           const img = beads[s.skin][Math.floor(i / 4) % 2];
-          c.drawImage(img, x - rr, y - rr, 2 * rr, 2 * rr);
+          c.drawImage(img, x - r, y - r, 2 * r, 2 * r);
           if (!i) {
             face(
               c,

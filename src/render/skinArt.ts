@@ -240,39 +240,135 @@ export function facePaint(c: Brush, id: string) {
   c.restore();
 }
 
-// Tail fins occupy the taper, behind the last segment. The point at (147,96)
-// joins the body; the rest of the silhouette points away from the head.
-export function tailPaint(c: Brush, id: string, light: string, dark: string) {
-  const silhouettes: Record<string, string> = {
-    fang: "M156 95 Q112 66 74 82 Q40 94 17 63 Q32 114 77 112 Q116 104 156 95Z",
-    bubble:
-      "M153 96 Q116 56 91 86 Q44 49 27 78 Q9 100 39 117 Q69 138 94 107 Q118 129 153 96Z",
-    fin: "M153 95 L66 34 72 75 24 62 62 95 25 133 74 119 66 158Z",
-    horn: "M159 96 Q98 107 54 145 Q60 113 81 98 Q36 111 16 73 Q52 90 78 72 L66 43 Q108 76 159 96Z",
-    crest: "M153 94 L41 36 65 84 27 98 65 110 39 153Z",
-    antenna: "M155 96 Q115 64 90 77 L15 98 92 116 Q123 130 155 96Z",
-    frill:
-      "M155 97 Q117 78 64 36 Q24 19 37 62 Q41 82 73 96 Q34 118 36 145 Q41 172 77 146Z",
-    star: "M151 96 L86 80 72 44 63 77 26 91 58 104 60 139 86 112Z",
-    antler:
-      "M155 96 Q119 63 87 58 L94 81 47 56 57 83 19 76 63 107 81 131 86 111 110 132 109 110Z",
-    spike:
-      "M157 96 L91 58 93 76 53 48 63 80 17 77 52 103 36 110 84 117 111 139 107 113Z",
-    mask: "M155 96 Q115 72 103 59 L102 75 Q68 41 31 65 L44 79 14 89 Q26 111 51 115 L40 123 Q86 145 109 116Z",
-    prism: "M156 96 L84 62 63 43 18 96 72 144 89 127Z",
-  };
-  shape(c, silhouettes[id], light, dark, 4);
-  if (id === "fin" || id === "frill" || id === "prism" || id === "crest") {
-    line(
-      c,
-      "M142 96 Q101 92 63 62 M143 97 Q100 97 50 98 M142 98 Q99 108 62 132",
-      dark,
-      3,
-    );
-    line(c, "M132 94 Q97 86 71 67", "#fff9ecb0", 2);
-  } else if (id === "spike" || id === "horn") {
-    shape(c, "M139 96 L96 85 98 94 57 77 75 98 59 99 105 108Z", "#ffd770");
-  } else if (id === "mask" || id === "antler") {
-    line(c, "M136 97 Q93 103 57 83 M117 99 L88 111", "#fff8d1", 4);
-  } else line(c, "M128 92 Q91 78 63 87", "#fff8dfb8", 4);
+// Side pieces share an anchor behind the cheeks. A dark rim keeps the outer
+// contour legible against both arena floors at the smallest playing size.
+export function headSilhouette(
+  c: Brush,
+  id: string,
+  light: string,
+  dark: string,
+) {
+  c.lineJoin = c.lineCap = "round";
+  for (const side of [-1, 1]) {
+    c.save();
+    c.translate(96, 96);
+    c.scale(1, side);
+    switch (id) {
+      case "mask": // Frost fox, with a folded ear and snow-white tips.
+        shape(
+          c,
+          "M-48 17 Q-64 40 -54 79 Q-29 74 -5 37Z",
+          "#e4f2ee",
+          "#344d5c",
+          4,
+        );
+        shape(c, "M-48 37 L-50 66 Q-33 59 -19 41Z", "#b08b9c");
+        break;
+      case "bubble": // Rounded rabbit ears with a dipped candy stripe.
+        shape(
+          c,
+          "M-49 24 C-68 49 -77 78 -60 80 C-43 83 -22 53 -13 33Z",
+          light,
+          dark,
+          4,
+        );
+        line(c, "M-56 68 Q-46 55 -35 42", "#ffddd8", 8);
+        break;
+      case "antler":
+        shape(
+          c,
+          "M-16 24 Q-42 34 -54 49 L-78 54 -63 60 -73 78 -54 71 -37 52 -34 66 -24 56 -18 41 0 32Z",
+          "#dfb77a",
+          "#594433",
+          4,
+        );
+        line(c, "M-51 55 L-34 42 -17 34", "#fff0bb", 4);
+        break;
+      case "antenna": // A forewing and a small amber feeler.
+        shape(
+          c,
+          "M-28 21 C-48 31 -83 63 -60 70 Q-37 76 -13 36Z",
+          "#ebeece",
+          "#71594a",
+          4,
+        );
+        line(c, "M-57 62 L-28 36 M-47 53 L-49 42", "#a6ada1", 3);
+        line(c, "M5 29 Q9 54 31 60", "#563b36", 5);
+        dot(c, 31, 60, 7, "#ffc558");
+        break;
+      case "frill":
+        shape(
+          c,
+          "M-46 25 Q-62 33 -71 57 Q-57 61 -40 47 Q-54 70 -40 74 Q-26 71 -17 48 Q-17 62 -8 64 Q2 58 -4 34Z",
+          "#ec9da7",
+          "#805466",
+          3,
+        );
+        line(c, "M-49 42 L-61 52 M-31 51 L-39 64", "#ffd8bf", 4);
+        break;
+      case "fin":
+      case "prism": {
+        const ice = id === "fin";
+        shape(
+          c,
+          "M-50 22 L-72 55 -49 51 -47 73 -24 60 -12 40 3 33Z",
+          ice ? "#abf0ed" : "#f7b9ba",
+          dark,
+          4,
+        );
+        shape(c, "M-47 69 L-40 49 -14 36 -27 55Z", ice ? "#558eb1" : "#a174b0");
+        line(c, "M-63 51 L-40 44 -46 66", "#fffaeb", 3);
+        break;
+      }
+      case "crest":
+      case "star":
+        if (id === "star") {
+          shape(
+            c,
+            "M-35 29 Q-54 35 -60 58 L-45 51 -45 69 -28 54 -12 55 -18 44 1 34Z",
+            "#8176bb",
+            "#413761",
+            3,
+          );
+          dot(c, -42, 48, 4, "#fff2ad");
+        } else {
+          shape(
+            c,
+            "M-52 20 L-79 52 -46 46 -55 68 -23 52 2 32Z",
+            "#454276",
+            dark,
+            4,
+          );
+          line(c, "M-61 44 L-34 37 -41 51 -16 39", "#95ffe5", 5);
+        }
+        break;
+      case "horn":
+      case "spike":
+        shape(
+          c,
+          "M-36 23 Q-52 29 -62 45 Q-73 57 -74 76 Q-52 61 -38 60 Q-20 56 -9 36Z",
+          id === "horn" ? "#e1ba8f" : "#545063",
+          "#533a42",
+          4,
+        );
+        line(
+          c,
+          "M-51 42 L-42 51 M-59 50 L-52 56",
+          id === "horn" ? "#986849" : "#ffab62",
+          4,
+        );
+        break;
+      case "fang":
+        shape(
+          c,
+          "M-41 20 Q-59 33 -59 58 Q-38 60 -16 45 L2 32Z",
+          light,
+          dark,
+          4,
+        );
+        shape(c, "M-47 35 L-50 49 -28 42Z", "#415e38");
+        break;
+    }
+    c.restore();
+  }
 }

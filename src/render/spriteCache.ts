@@ -1,4 +1,4 @@
-import { material, facePaint, tailPaint } from "./skinArt";
+import { material, facePaint, headSilhouette } from "./skinArt";
 import { skins } from "../config";
 function sprite(n: number, paint: (c: CanvasRenderingContext2D) => void) {
   const canvas = document.createElement("canvas");
@@ -498,77 +498,9 @@ export const crown = sprite(128, (c) => {
 // Mirrored side details read as a silhouette even when the snake is small.
 const ornaments = skins.map((s) =>
   sprite(192, (c) => {
-    for (const side of [-1, 1]) {
-      c.save();
-      c.translate(96, 96);
-      c.scale(1, side);
-      c.lineJoin = "round";
-      c.lineWidth = 3;
-      c.strokeStyle = s[2];
-      c.fillStyle = s[1];
-      c.beginPath();
-      switch (s[3]) {
-        case "antler":
-        case "horn":
-          c.fillStyle = s[3] === "antler" ? "#ffdf9b" : "#4b3240";
-          c.moveTo(-8, 30);
-          c.quadraticCurveTo(-34, 45, -58, 65);
-          c.quadraticCurveTo(-33, 65, 6, 42);
-          break;
-        case "fin":
-        case "frill":
-          c.fillStyle = s[3] === "fin" ? "#bdeef1" : "#ffb6a4";
-          c.moveTo(-5, 26);
-          c.lineTo(-38, 64);
-          c.lineTo(-43, 53);
-          c.lineTo(-60, 59);
-          c.lineTo(-56, 43);
-          c.lineTo(-68, 41);
-          c.lineTo(-29, 20);
-          break;
-        case "antenna":
-          c.moveTo(3, 27);
-          c.quadraticCurveTo(12, 60, 30, 67);
-          c.stroke();
-          c.beginPath();
-          c.fillStyle = "#61483b";
-          c.arc(30, 67, 7, 0, 7);
-          break;
-        case "mask":
-        case "bubble":
-          c.fillStyle = s[3] === "mask" ? "#edf4fa" : "#ffd4d5";
-          c.moveTo(-37, 22);
-          c.quadraticCurveTo(-49, 92, -21, 65);
-          c.lineTo(0, 33);
-          break;
-        default:
-          c.restore();
-          continue;
-      }
-      c.closePath();
-      c.fill();
-      c.stroke();
-      c.restore();
-    }
+    headSilhouette(c, s[3], s[1], s[2]);
   }),
 );
-const tails = skins.map((s) =>
-  sprite(192, (c) => tailPaint(c, s[3], s[1], s[2])),
-);
-export function tail(
-  c: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  angle: number,
-  r: number,
-  skin: number,
-) {
-  c.save();
-  c.translate(x, y);
-  c.rotate(angle);
-  c.drawImage(tails[skin], -1.53 * r, -r, 2 * r, 2 * r);
-  c.restore();
-}
 const eyes = skins.map((s) =>
   sprite(128, (c) => {
     const angular = ["fang", "antler", "horn", "spike"].includes(s[3]);
@@ -644,6 +576,7 @@ export function preview(
     w = canvas.width,
     h = canvas.height;
   c.clearRect(0, 0, w, h);
+  const r = vertical ? w * 0.205 : h * 0.24;
   let lastX = 0,
     lastY = 0;
   for (let i = 0; i <= 50; i++) {
@@ -651,20 +584,6 @@ export function preview(
       v = Math.sin(u * 6 + time) * 0.17;
     const x = vertical ? w * (0.5 + v) : w * (0.11 + 0.76 * u),
       y = vertical ? h * (0.09 + 0.79 * u) : h * (0.5 + v);
-    const r = (vertical ? w * 0.205 : h * 0.24) * Math.min(1, 0.2 + u * 3.8);
-    if (i === 0) {
-      const tangent = 1.02 * Math.cos(time);
-      tail(
-        c,
-        x,
-        y,
-        vertical
-          ? Math.atan2(h * 0.79, w * tangent)
-          : Math.atan2(h * tangent, w * 0.76),
-        vertical ? w * 0.19 : h * 0.2,
-        skin,
-      );
-    }
     c.drawImage(beads[skin][Math.floor(i / 5) % 2], x - r, y - r, 2 * r, 2 * r);
     if (i === 50) face(c, x, y, Math.atan2(y - lastY, x - lastX), r, skin);
     lastX = x;
@@ -685,7 +604,7 @@ export function preview(
       x,
       y,
       angle,
-      (vertical ? w * 0.205 : h * 0.24) * Math.min(1, 0.2 + u * 3.8),
+      r,
     );
   }
 }
