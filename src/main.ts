@@ -33,7 +33,7 @@ const chargeBar = bossPanel.querySelector("div")!;
 const segments = Array.from(chargeBar.querySelectorAll("i"));
 function chargeHUD() {
   const trap = world.trap;
-  bossPanel.hidden = !trap;
+  if (bossPanel.hidden !== !trap) bossPanel.hidden = !trap;
   if (!trap) return;
   const fraction = Math.min(1, trap.charge / CHARGE_SECONDS);
   chargeBar.setAttribute("aria-valuenow", String(Math.round(100 * fraction)));
@@ -48,27 +48,37 @@ function chargeHUD() {
     ),
   );
 }
+const leaderboardRows = el("rows");
+const scoreFormat = new Intl.NumberFormat();
+function updateText(node: Element, text: string) {
+  if (node.textContent !== text) node.textContent = text;
+}
 function hud() {
-  const rows = el("rows");
-  rows.replaceChildren();
+  let count = 0;
   function row(i: number) {
     const s = world.ranking[i];
-    if (!s) return;
-    const node = document.createElement("div");
-    node.className = "row" + (s.id ? "" : " me");
-    const place = document.createElement("i"),
-      name = document.createElement("span"),
-      value = document.createElement("span");
-    place.textContent = i === 0 ? "♛" : String(i + 1);
-    name.textContent = s.name;
-    value.textContent = Math.floor(s.mass).toLocaleString();
-    node.append(place, name, value);
-    rows.append(node);
+    let node = leaderboardRows.children[count++];
+    if (!node) {
+      node = document.createElement("div");
+      node.append(
+        document.createElement("i"),
+        document.createElement("span"),
+        document.createElement("span"),
+      );
+      leaderboardRows.append(node);
+    }
+    const name = s.id ? "row" : "row me";
+    if (node.className !== name) node.className = name;
+    updateText(node.children[0], i === 0 ? "♛" : String(i + 1));
+    updateText(node.children[1], s.name);
+    updateText(node.children[2], scoreFormat.format(Math.floor(s.mass)));
   }
   for (let i = 0; i < Math.min(10, world.ranking.length); i++) row(i);
   const me = world.ranking.indexOf(world.player);
   if (me >= 10) row(me);
-  el("hud").textContent = Math.floor(world.player.mass).toLocaleString();
+  while (leaderboardRows.children.length > count)
+    leaderboardRows.lastElementChild!.remove();
+  updateText(el("hud"), scoreFormat.format(Math.floor(world.player.mass)));
 }
 function start() {
   if (portrait.matches) return;

@@ -11,6 +11,7 @@ import {
   shadow,
   marking,
   boostWake,
+  tail,
 } from "./spriteCache";
 import { lobby } from "./lobby";
 const canvas = document.querySelector<HTMLCanvasElement>("#arena")!,
@@ -33,7 +34,16 @@ function readColors() {
   };
 }
 let colors = readColors();
-function floorPattern() {
+// The floor is static artwork. Pan a separate composited layer rather than
+// resampling a screen-sized Canvas pattern behind every animated frame.
+const floor = document.createElement("div");
+floor.id = "arena-floor";
+floor.setAttribute("aria-hidden", "true");
+canvas.before(floor);
+let floorScale = 0,
+  floorW = 0,
+  floorH = 0;
+function paintTile() {
   const tile = document.createElement("canvas");
   tile.width = 288;
   tile.height = 166;
@@ -53,14 +63,39 @@ function floorPattern() {
       t.fill();
       t.stroke();
     }
-  const floor = c.createPattern(tile, "repeat")!;
-  floor.setTransform(new DOMMatrix().scale(0.5));
-  return floor;
+  floor.style.backgroundImage = "url(" + tile.toDataURL() + ")";
 }
-let pattern = floorPattern();
+function placeFloor(
+  w: number,
+  h: number,
+  scale: number,
+  worldX: number,
+  worldY: number,
+) {
+  if (
+    w !== floorW ||
+    h !== floorH ||
+    scale / floorScale < 0.91 ||
+    scale / floorScale > 1.1
+  ) {
+    floorW = w;
+    floorH = h;
+    floorScale = scale;
+    floor.style.width = w * 1.12 + 288 * scale + "px";
+    floor.style.height = h * 1.12 + 166 * scale + "px";
+    floor.style.backgroundSize = 144 * scale + "px " + 83 * scale + "px";
+  }
+  const periodX = 144 * scale,
+    periodY = 83 * scale;
+  const x = (((worldX % periodX) + periodX) % periodX) - periodX;
+  const y = (((worldY % periodY) + periodY) % periodY) - periodY;
+  floor.style.transform =
+    "translate3d(" + x + "px," + y + "px,0) scale(" + scale / floorScale + ")";
+}
+paintTile();
 window.addEventListener("pam-theme", () => {
   colors = readColors();
-  pattern = floorPattern();
+  paintTile();
 });
 let zoom = 1,
   cx = 0,
@@ -108,6 +143,21 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
               rr * 2.8,
             );
         } else {
+          if (i === n - 1 && i > 0) {
+            const front = s.body[i - 1],
+              prior = s.old[i - 1];
+            tail(
+              c,
+              x,
+              y,
+              Math.atan2(
+                prior.y + (front.y - prior.y) * f - y,
+                prior.x + (front.x - prior.x) * f - x,
+              ),
+              r * 0.75,
+              s.skin,
+            );
+          }
           const img = beads[s.skin][Math.floor(i / 4) % 2];
           c.drawImage(img, x - rr, y - rr, 2 * rr, 2 * rr);
           if (!i) {
@@ -172,7 +222,10 @@ export function draw(
     canvas.height = ph;
   }
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  c.imageSmoothingQuality = "high";
+  c.clearRect(0, 0, w, h);
+  c.imageSmoothingQuality = "low";
+  let originX = 0,
+    originY = 0;
   c.save();
   if (live) {
     const s = world.player;
@@ -184,6 +237,8 @@ export function draw(
     cx = s.old[0].x + (s.x - s.old[0].x) * f;
     cy = s.old[0].y + (s.y - s.old[0].y) * f;
     const shake = cameraShake(time, world.shake);
+    originX = w / 2 + shake.x - cx * zoom;
+    originY = h / 2 + shake.y - cy * zoom;
     c.translate(w / 2 + shake.x, h / 2 + shake.y);
     c.scale(zoom, zoom);
     c.translate(-cx, -cy);
@@ -192,36 +247,43 @@ export function draw(
   top = live ? cy - h / (2 * zoom) : 0;
   right = left + (live ? w / zoom : w);
   bottom = top + (live ? h / zoom : h);
-  c.fillStyle = pattern;
-  c.fillRect(left - 12, top - 12, right - left + 24, bottom - top + 24);
+  placeFloor(w, h, live ? zoom : 1, originX, originY);
   if (!live) {
     lobby(c, w, h, time, (s, alpha) => snake(s, alpha, s.id === 1, true));
     c.restore();
     return;
   }
   // Darken the out-of-bounds area and mark the approach before the lethal edge.
-  c.beginPath();
-  c.rect(left - 14, top - 14, right - left + 28, bottom - top + 28);
-  c.arc(0, 0, R, 0, Math.PI * 2);
-  c.fillStyle = colors.outside;
-  c.fill("evenodd");
-  c.beginPath();
-  c.arc(0, 0, R - 46, 0, Math.PI * 2);
-  c.lineWidth = 80;
-  c.strokeStyle = colors.danger + "22";
-  c.stroke();
-  c.beginPath();
-  c.arc(0, 0, R - 95, 0, Math.PI * 2);
-  c.lineWidth = 3;
-  c.strokeStyle = colors.danger + "99";
-  c.setLineDash([14, 12]);
-  c.stroke();
-  c.setLineDash([]);
-  c.beginPath();
-  c.arc(0, 0, R, 0, 7);
-  c.strokeStyle = colors.danger;
-  c.lineWidth = 12;
-  c.stroke();
+  if (
+    Math.hypot(
+      Math.max(Math.abs(left), Math.abs(right)),
+      Math.max(Math.abs(top), Math.abs(bottom)),
+    ) >=
+    R - 110
+  ) {
+    c.beginPath();
+    c.rect(left - 14, top - 14, right - left + 28, bottom - top + 28);
+    c.arc(0, 0, R, 0, Math.PI * 2);
+    c.fillStyle = colors.outside;
+    c.fill("evenodd");
+    c.beginPath();
+    c.arc(0, 0, R - 46, 0, Math.PI * 2);
+    c.lineWidth = 80;
+    c.strokeStyle = colors.danger + "22";
+    c.stroke();
+    c.beginPath();
+    c.arc(0, 0, R - 95, 0, Math.PI * 2);
+    c.lineWidth = 3;
+    c.strokeStyle = colors.danger + "99";
+    c.setLineDash([14, 12]);
+    c.stroke();
+    c.setLineDash([]);
+    c.beginPath();
+    c.arc(0, 0, R, 0, 7);
+    c.strokeStyle = colors.danger;
+    c.lineWidth = 12;
+    c.stroke();
+  }
   for (const p of world.food) {
     if (!visible(p.x, p.y)) continue;
     const r = p.loot ? 25 + 3 * Math.sin(time * 5 + p.x) : 18;

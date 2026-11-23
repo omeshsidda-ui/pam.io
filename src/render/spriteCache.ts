@@ -1,3 +1,4 @@
+import { material, facePaint, tailPaint } from "./skinArt";
 import { skins } from "../config";
 function sprite(n: number, paint: (c: CanvasRenderingContext2D) => void) {
   const canvas = document.createElement("canvas");
@@ -33,6 +34,7 @@ export const beads = skins.map((s, i) =>
       c.beginPath();
       c.arc(96, 96, 92, 0, Math.PI * 2);
       c.fill();
+      material(c, s[3], band);
       const rim = c.createRadialGradient(82, 74, 32, 96, 96, 92);
       rim.addColorStop(0, "#ffffff13");
       rim.addColorStop(0.72, "#15112300");
@@ -371,6 +373,28 @@ const heads = skins.map((s) =>
     } else c.ellipse(97, 96, 92, 76, 0, 0, Math.PI * 2);
     c.closePath();
     c.fill();
+    facePaint(c, s[3]);
+    // Snout and nostrils break up the face at both portrait and arena scale.
+    const plush = s[3] === "mask" || s[3] === "bubble";
+    c.fillStyle = plush ? "#fff4df" : "#fff3d431";
+    c.beginPath();
+    c.ellipse(160, 96, 25, 16, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = plush ? "#593849" : "#3c313b";
+    if (plush) {
+      c.beginPath();
+      c.moveTo(176, 89);
+      c.quadraticCurveTo(190, 94, 180, 102);
+      c.quadraticCurveTo(168, 105, 171, 96);
+      c.closePath();
+      c.fill();
+    } else {
+      for (const side of [-1, 1]) {
+        c.beginPath();
+        c.ellipse(172, 96 + side * 9, 4, 2.5, side * 0.45, 0, 7);
+        c.fill();
+      }
+    }
     // A bright cheek slash gives the face a recognizable, skin-specific badge.
     c.fillStyle = s[2] + "d9";
     c.beginPath();
@@ -528,6 +552,23 @@ const ornaments = skins.map((s) =>
     }
   }),
 );
+const tails = skins.map((s) =>
+  sprite(192, (c) => tailPaint(c, s[3], s[1], s[2])),
+);
+export function tail(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  angle: number,
+  r: number,
+  skin: number,
+) {
+  c.save();
+  c.translate(x, y);
+  c.rotate(angle);
+  c.drawImage(tails[skin], -1.53 * r, -r, 2 * r, 2 * r);
+  c.restore();
+}
 const eyes = skins.map((s) =>
   sprite(128, (c) => {
     const angular = ["fang", "antler", "horn", "spike"].includes(s[3]);
@@ -611,6 +652,19 @@ export function preview(
     const x = vertical ? w * (0.5 + v) : w * (0.11 + 0.76 * u),
       y = vertical ? h * (0.09 + 0.79 * u) : h * (0.5 + v);
     const r = (vertical ? w * 0.205 : h * 0.24) * Math.min(1, 0.2 + u * 3.8);
+    if (i === 0) {
+      const tangent = 1.02 * Math.cos(time);
+      tail(
+        c,
+        x,
+        y,
+        vertical
+          ? Math.atan2(h * 0.79, w * tangent)
+          : Math.atan2(h * tangent, w * 0.76),
+        vertical ? w * 0.19 : h * 0.2,
+        skin,
+      );
+    }
     c.drawImage(beads[skin][Math.floor(i / 5) % 2], x - r, y - r, 2 * r, 2 * r);
     if (i === 50) face(c, x, y, Math.atan2(y - lastY, x - lastX), r, skin);
     lastX = x;

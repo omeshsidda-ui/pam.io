@@ -1,7 +1,7 @@
 import { resolvedTheme, setAppearance } from "./theme";
 import { skins } from "./config";
 import { profile, save } from "./storage";
-import { preview } from "./render/spriteCache";
+import { preview, face } from "./render/spriteCache";
 export const el = (id: string) => document.getElementById(id)!;
 const paths: Record<string, string> = {
   forward: '<path d="M4 12h15m-6-6 6 6-6 6"/>',
@@ -49,6 +49,9 @@ let category = "All",
   selected = 0;
 const previews = new Map<HTMLCanvasElement, number>();
 function details() {
+  const portrait = (el("skin-portrait") as HTMLCanvasElement).getContext("2d")!;
+  portrait.clearRect(0, 0, 192, 192);
+  face(portrait, 97, 98, -0.34, 54, selected);
   const level = selected - 3,
     owned = selected < profile.unlocked;
   el("skin-name").textContent = skins[selected][0];
