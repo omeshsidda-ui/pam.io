@@ -402,6 +402,27 @@ export class World {
       }
     }
   }
+  private compactDistantFood() {
+    const halfW = innerWidth / (2 * this.cameraZoom) + 240;
+    const halfH = innerHeight / (2 * this.cameraZoom) + 240;
+    const piles = new Map<string, Pellet>();
+    this.food = this.food.filter((p) => {
+      if (
+        Math.abs(p.x - this.player.x) < halfW &&
+        Math.abs(p.y - this.player.y) < halfH
+      )
+        return true;
+      if (!p.loot) return p.v !== 1; // Retire distant spent boost trails.
+      const key = Math.floor(p.x / 48) + "," + Math.floor(p.y / 48);
+      const pile = piles.get(key);
+      if (pile) {
+        pile.v += p.v;
+        return false;
+      }
+      piles.set(key, p);
+      return true;
+    });
+  }
   update() {
     this.tick++;
     this.shake *= 0.9;
@@ -431,7 +452,7 @@ export class World {
     this.eat();
     this.food = this.food.filter((p) => p.v > 0);
     if (this.tick % 60 === 0 && this.food.length > 2000)
-      this.food.splice(0, this.food.length - 2000);
+      this.compactDistantFood();
     if (this.tick % 30 === 0) {
       let ambient = this.food.reduce(
         (n, p) => n + Number(!p.loot && p.v === 2),

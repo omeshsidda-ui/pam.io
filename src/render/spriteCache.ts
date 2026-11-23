@@ -1,9 +1,30 @@
 import { material, facePaint, headSilhouette } from "./skinArt";
 import { skins } from "../config";
+// Downsample once, while all source pixels are available. In play, bilinear
+// filtering then only has to handle the small gap between adjacent sizes.
+const smaller = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
+export function atSize(image: HTMLCanvasElement, pixels: number) {
+  while (image.width >= 2 * pixels) {
+    const next = smaller.get(image);
+    if (!next) break;
+    image = next;
+  }
+  return image;
+}
 function sprite(n: number, paint: (c: CanvasRenderingContext2D) => void) {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = n;
   paint(canvas.getContext("2d")!);
+  let level = canvas;
+  while (level.width >= 24) {
+    const next = document.createElement("canvas");
+    next.width = next.height = Math.floor(level.width / 2);
+    const ctx = next.getContext("2d")!;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(level, 0, 0, next.width, next.height);
+    smaller.set(level, next);
+    level = next;
+  }
   return canvas;
 }
 // Each pair is the crest and underside color of the alternate body band.
@@ -546,18 +567,37 @@ export function face(
   r: number,
   skin: number,
   turn = 0,
+  pixelScale = 1,
 ) {
   c.save();
   c.translate(x, y);
   c.rotate(a);
   c.scale(r, r);
-  c.drawImage(ornaments[skin], -1.82, -1.82, 3.64, 3.64);
-  c.drawImage(heads[skin], -1.18, -1.16, 2.55, 2.32);
+  c.drawImage(
+    atSize(ornaments[skin], r * pixelScale * 3.64),
+    -1.82,
+    -1.82,
+    3.64,
+    3.64,
+  );
+  c.drawImage(
+    atSize(heads[skin], r * pixelScale * 2.55),
+    -1.18,
+    -1.16,
+    2.55,
+    2.32,
+  );
   for (const sign of [-1, 1]) {
     const yEye = sign * 0.52;
-    c.drawImage(eyes[skin], 0.04, yEye - 0.44, 0.88, 0.88);
     c.drawImage(
-      pupils[skin],
+      atSize(eyes[skin], r * pixelScale * 0.88),
+      0.04,
+      yEye - 0.44,
+      0.88,
+      0.88,
+    );
+    c.drawImage(
+      atSize(pupils[skin], r * pixelScale * 0.46),
       0.39,
       yEye - 0.23 + Math.sin(turn) * 0.12,
       0.46,
@@ -598,13 +638,6 @@ export function preview(
     const angle = vertical
       ? Math.atan2(h * 0.79, w * 1.02 * Math.cos(phase))
       : Math.atan2(h * 1.02 * Math.cos(phase), w * 0.76);
-    marking(
-      c,
-      skin,
-      x,
-      y,
-      angle,
-      r,
-    );
+    marking(c, skin, x, y, angle, r);
   }
 }

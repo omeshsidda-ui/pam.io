@@ -5,6 +5,7 @@ import { playZoom, cameraEase, cameraShake } from "../engine/camera";
 import { width } from "../engine/physics";
 import {
   beads,
+  atSize,
   orbs,
   crown,
   face,
@@ -110,6 +111,9 @@ function visible(x: number, y: number) {
 function snake(s: Snake, f: number, leader = false, demo = false) {
   const r = width(s),
     n = s.body.length;
+  const pixelScale = c.getTransform().a;
+  const light = atSize(beads[s.skin][0], 2 * r * pixelScale);
+  const dark = atSize(beads[s.skin][1], 2 * r * pixelScale);
   for (let pass = 0; pass < 2; pass++) {
     for (let i = n - 1; i >= 0; i--) {
       const p = s.body[i],
@@ -132,15 +136,9 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
             c.restore();
           }
           if (i % 2 === 0)
-            c.drawImage(
-              shadow,
-              x - r * 1.4,
-              y - r * 0.96,
-              r * 2.8,
-              r * 2.8,
-            );
+            c.drawImage(shadow, x - r * 1.4, y - r * 0.96, r * 2.8, r * 2.8);
         } else {
-          const img = beads[s.skin][Math.floor(i / 4) % 2];
+          const img = Math.floor(i / 4) % 2 ? dark : light;
           c.drawImage(img, x - r, y - r, 2 * r, 2 * r);
           if (!i) {
             face(
@@ -151,6 +149,7 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
               r,
               s.skin,
               angleDiff(s.aim, s.a),
+              pixelScale,
             );
             c.textAlign = "center";
             c.font = "600 12px Arial";
@@ -203,7 +202,7 @@ export function draw(
     canvas.width = pw;
     canvas.height = ph;
   }
-  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.setTransform(pw / w, 0, 0, ph / h, 0, 0);
   c.clearRect(0, 0, w, h);
   c.imageSmoothingQuality = "low";
   let originX = 0,
