@@ -1,3 +1,5 @@
+import { skins } from "./config";
+
 const defaults = {
   name: "",
   appearance: "system",
@@ -19,6 +21,9 @@ try {
     JSON.parse(localStorage.getItem("pam.profile") || "{}"),
   );
 } catch {}
+if (!Number.isInteger(profile.skin) || profile.skin < 0 || profile.skin >= skins.length)
+  profile.skin = defaults.skin;
+
 export function save() {
   try {
     localStorage.setItem("pam.profile", JSON.stringify(profile));
