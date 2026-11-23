@@ -41,6 +41,7 @@ export class World {
   deathCause = "";
   waiting = new Set<number>();
   difficulty = new Difficulty(profile.recentDifficulty);
+  cameraMass = 65;
   cameraZoom = playZoom(65, innerWidth, innerHeight);
   private nextBossAttempt = 0;
   constructor() {

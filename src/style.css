@@ -978,3 +978,7 @@ kbd {
 
 #skin-portrait{width:clamp(52px,8vw,96px);aspect-ratio:1;border-radius:12px;background:var(--well);border:1px solid var(--edge)}
 .details>div{flex:1}
+
+#arena {
+  transform: translateZ(0);
+}

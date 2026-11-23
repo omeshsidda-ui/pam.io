@@ -1,7 +1,7 @@
 import { R, angleDiff, CHARGE_SECONDS } from "../config";
 import type { World } from "../engine/world";
 import type { Snake } from "../types";
-import { playZoom, cameraEase, cameraShake } from "../engine/camera";
+import { playZoom, framingMass, cameraEase, cameraShake } from "../engine/camera";
 import { width } from "../engine/physics";
 import {
   beads,
@@ -13,9 +13,10 @@ import {
   marking,
   boostWake,
 } from "./spriteCache";
+import { ArenaResolution } from "./resolution";
 import { lobby } from "./lobby";
 const canvas = document.querySelector<HTMLCanvasElement>("#arena")!,
-  c = canvas.getContext("2d")!;
+  c = canvas.getContext("2d", { desynchronized: true })!;
 function readColors() {
   const style = getComputedStyle(document.documentElement);
   const get = (role: string) => style.getPropertyValue("--" + role).trim();
@@ -33,6 +34,7 @@ function readColors() {
     gold: get("gold"),
   };
 }
+const resolution = new ArenaResolution();
 let colors = readColors();
 // The floor is static artwork. Pan a separate composited layer rather than
 // resampling a screen-sized Canvas pattern behind every animated frame.
@@ -45,9 +47,10 @@ let floorScale = 0,
   floorH = 0;
 function paintTile() {
   const tile = document.createElement("canvas");
-  tile.width = 288;
-  tile.height = 166;
+  tile.width = 288 * 4;
+  tile.height = 166 * 4;
   const t = tile.getContext("2d")!;
+  t.scale(4, 4);
   t.strokeStyle = colors.grid;
   t.lineWidth = 1.1;
   for (let j = -1; j < 3; j++)
@@ -189,13 +192,13 @@ export function draw(
   time: number,
   pullback = 0,
 ) {
-  const renderDt = lastRenderTime
-    ? Math.max(0, Math.min(time - lastRenderTime, 0.08))
+  const frameDt = lastRenderTime
+    ? time - lastRenderTime
     : 1 / 60;
   lastRenderTime = time;
   const w = innerWidth,
     h = innerHeight,
-    dpr = Math.min(devicePixelRatio || 1, 2),
+    dpr = resolution.update(w, h, devicePixelRatio, frameDt, live && !world.player.dead),
     pw = Math.round(w * dpr),
     ph = Math.round(h * dpr);
   if (canvas.width !== pw || canvas.height !== ph) {
@@ -210,8 +213,11 @@ export function draw(
   c.save();
   if (live) {
     const s = world.player;
-    world.cameraZoom +=
-      (playZoom(s.mass, w, h) - world.cameraZoom) * cameraEase(renderDt);
+    if (!s.dead) {
+      world.cameraMass = framingMass(world.cameraMass, s.mass);
+      world.cameraZoom +=
+        (playZoom(world.cameraMass, w, h) - world.cameraZoom) * cameraEase(frameDt);
+    }
     const ease = pullback * pullback * (3 - 2 * pullback);
     zoom = world.cameraZoom * (1 - 0.25 * ease);
     if (s.dead) f = 1;

@@ -1,12 +1,16 @@
-import { R } from "../config";
-
 export function playZoom(mass: number, w: number, h: number) {
-  // Preserve room outside the view even on very large monitors.
-  return Math.max(
-    0.53,
-    Math.min(w, h) / (R * 0.65),
-    (Math.min(w, h) < 600 ? 0.79 : 1.08) - Math.log1p(mass / 200) * 0.16,
-  );
+  // Frame the same stretch of arena on a large monitor as on a laptop.
+  // Compact phones need a wider field relative to their shorter edge.
+  const base = Math.max(0.78, Math.min(w, h) / 760);
+  const growth = Math.log1p(Math.max(0, mass - 65) / 360);
+  return base * Math.max(0.73, 1 / (1 + 0.15 * growth));
+}
+
+export function framingMass(previous: number, mass: number) {
+  // Ignore small pickups and short boosts. Move the framing reference only
+  // by the amount outside the band, so crossing it introduces no zoom step.
+  const band = Math.max(12, mass * 0.045);
+  return Math.max(mass - band, Math.min(previous, mass + band));
 }
 
 // Camera easing is expressed per second so it behaves the same at every
