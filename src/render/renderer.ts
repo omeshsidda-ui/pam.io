@@ -1,7 +1,12 @@
 import { R, angleDiff, CHARGE_SECONDS } from "../config";
 import type { World } from "../engine/world";
 import type { Snake } from "../types";
-import { playZoom, framingMass, cameraEase, cameraShake } from "../engine/camera";
+import {
+  playZoom,
+  framingMass,
+  cameraEase,
+  cameraShake,
+} from "../engine/camera";
 import { width } from "../engine/physics";
 import {
   beads,
@@ -16,7 +21,7 @@ import {
 import { ArenaResolution } from "./resolution";
 import { lobby } from "./lobby";
 const canvas = document.querySelector<HTMLCanvasElement>("#arena")!,
-  c = canvas.getContext("2d", { desynchronized: true })!;
+  c = canvas.getContext("2d", { desynchronized: true, alpha: false })!;
 function readColors() {
   const style = getComputedStyle(document.documentElement);
   const get = (role: string) => style.getPropertyValue("--" + role).trim();
@@ -36,21 +41,17 @@ function readColors() {
 }
 const resolution = new ArenaResolution();
 let colors = readColors();
-// The floor is static artwork. Pan a separate composited layer rather than
-// resampling a screen-sized Canvas pattern behind every animated frame.
-const floor = document.createElement("div");
-floor.id = "arena-floor";
-floor.setAttribute("aria-hidden", "true");
-canvas.before(floor);
-let floorScale = 0,
-  floorW = 0,
-  floorH = 0;
+const tile = document.createElement("canvas");
+const stamp = document.createElement("canvas");
+let pattern: CanvasPattern | null = null;
+
 function paintTile() {
-  const tile = document.createElement("canvas");
   tile.width = 288 * 4;
   tile.height = 166 * 4;
   const t = tile.getContext("2d")!;
   t.scale(4, 4);
+  t.fillStyle = colors.field;
+  t.fillRect(0, 0, 288, 166);
   t.strokeStyle = colors.grid;
   t.lineWidth = 1.1;
   for (let j = -1; j < 3; j++)
@@ -66,35 +67,39 @@ function paintTile() {
       t.fill();
       t.stroke();
     }
-  floor.style.backgroundImage = "url(" + tile.toDataURL() + ")";
+  pattern = null;
 }
-function placeFloor(
-  w: number,
-  h: number,
-  scale: number,
-  worldX: number,
-  worldY: number,
-) {
-  if (
-    w !== floorW ||
-    h !== floorH ||
-    scale / floorScale < 0.91 ||
-    scale / floorScale > 1.1
-  ) {
-    floorW = w;
-    floorH = h;
-    floorScale = scale;
-    floor.style.width = w * 1.12 + 288 * scale + "px";
-    floor.style.height = h * 1.12 + 166 * scale + "px";
-    floor.style.backgroundSize = 144 * scale + "px " + 83 * scale + "px";
-  }
+
+function drawFloor(w: number, h: number, scale: number, x: number, y: number) {
+  // Cache a single repeat near its final pixel size. The opaque fill also
+  // erases the previous frame without a separate full-screen clear.
   const periodX = 144 * scale,
     periodY = 83 * scale;
-  const x = (((worldX % periodX) + periodX) % periodX) - periodX;
-  const y = (((worldY % periodY) + periodY) % periodY) - periodY;
-  floor.style.transform =
-    "translate3d(" + x + "px," + y + "px,0) scale(" + scale / floorScale + ")";
+  const sw = Math.max(1, Math.round((periodX * canvas.width) / w));
+  const sh = Math.max(1, Math.round((periodY * canvas.height) / h));
+  if (!pattern || stamp.width !== sw || stamp.height !== sh) {
+    stamp.width = sw;
+    stamp.height = sh;
+    const brush = stamp.getContext("2d", { alpha: false })!;
+    brush.imageSmoothingQuality = "high";
+    brush.drawImage(tile, 0, 0, sw, sh);
+    pattern = c.createPattern(stamp, "repeat")!;
+  }
+  // Anchor subpixel rounding at the camera center so the floor follows the
+  // player through a zoom. Integer bitmap offsets avoid filtering every pixel.
+  const tx = Math.round(
+    (((x - w / 2) % periodX) * sw) / periodX + canvas.width / 2,
+  );
+  const ty = Math.round(
+    (((y - h / 2) % periodY) * sh) / periodY + canvas.height / 2,
+  );
+  c.save();
+  c.setTransform(1, 0, 0, 1, tx, ty);
+  c.fillStyle = pattern;
+  c.fillRect(-tx, -ty, canvas.width, canvas.height);
+  c.restore();
 }
+
 paintTile();
 window.addEventListener("pam-theme", () => {
   colors = readColors();
@@ -192,13 +197,17 @@ export function draw(
   time: number,
   pullback = 0,
 ) {
-  const frameDt = lastRenderTime
-    ? time - lastRenderTime
-    : 1 / 60;
+  const frameDt = lastRenderTime ? time - lastRenderTime : 1 / 60;
   lastRenderTime = time;
   const w = innerWidth,
     h = innerHeight,
-    dpr = resolution.update(w, h, devicePixelRatio, frameDt, live && !world.player.dead),
+    dpr = resolution.update(
+      w,
+      h,
+      devicePixelRatio,
+      frameDt,
+      live && !world.player.dead,
+    ),
     pw = Math.round(w * dpr),
     ph = Math.round(h * dpr);
   if (canvas.width !== pw || canvas.height !== ph) {
@@ -206,7 +215,7 @@ export function draw(
     canvas.height = ph;
   }
   c.setTransform(pw / w, 0, 0, ph / h, 0, 0);
-  c.clearRect(0, 0, w, h);
+
   c.imageSmoothingQuality = "low";
   let originX = 0,
     originY = 0;
@@ -216,7 +225,8 @@ export function draw(
     if (!s.dead) {
       world.cameraMass = framingMass(world.cameraMass, s.mass);
       world.cameraZoom +=
-        (playZoom(world.cameraMass, w, h) - world.cameraZoom) * cameraEase(frameDt);
+        (playZoom(world.cameraMass, w, h) - world.cameraZoom) *
+        cameraEase(frameDt);
     }
     const ease = pullback * pullback * (3 - 2 * pullback);
     zoom = world.cameraZoom * (1 - 0.25 * ease);
@@ -226,15 +236,16 @@ export function draw(
     const shake = cameraShake(time, world.shake);
     originX = w / 2 + shake.x - cx * zoom;
     originY = h / 2 + shake.y - cy * zoom;
-    c.translate(w / 2 + shake.x, h / 2 + shake.y);
-    c.scale(zoom, zoom);
-    c.translate(-cx, -cy);
   }
   left = live ? cx - w / (2 * zoom) : 0;
   top = live ? cy - h / (2 * zoom) : 0;
   right = left + (live ? w / zoom : w);
   bottom = top + (live ? h / zoom : h);
-  placeFloor(w, h, live ? zoom : 1, originX, originY);
+  drawFloor(w, h, live ? zoom : 1, originX, originY);
+  if (live) {
+    c.translate(originX, originY);
+    c.scale(zoom, zoom);
+  }
   if (!live) {
     lobby(c, w, h, time, (s, alpha) => snake(s, alpha, s.id === 1, true));
     c.restore();

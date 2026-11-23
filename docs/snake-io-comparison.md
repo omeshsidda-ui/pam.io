@@ -41,7 +41,7 @@ These are pam.io measurements. Screenshots and browser control descriptions cann
 
 ## Desktop frame pacing at 60 Hz
 
-The old renderer resampled the full-screen hex floor every frame and drew the arena wall even when it was outside the view. The floor now moves on its own browser layer. The foreground skips the wall when it is offscreen, and the leaderboard updates existing rows.
+The old renderer resampled the full-screen hex floor every frame and drew the arena wall even when it was outside the view. The first optimization moved the floor onto its own browser layer. Later profiling at 4K showed that compositing this layer was costly on a software renderer. The current renderer caches one hex tile at its display size and repeats it directly on the opaque arena canvas. The foreground skips the wall when it is offscreen, and the leaderboard updates existing rows.
 
 In two before-and-after runs at 1920 × 1080 in headless Chromium, the slowest 5% of animation callbacks started at intervals of 50–67 ms or longer before the change. The 95th percentile fell to 16.7 ms in both updated runs. Of 675 intervals in the updated runs, one exceeded 25 ms. This measures browser callbacks during play. Physical display timing and Kooapps’ frame rate were not measured.
 

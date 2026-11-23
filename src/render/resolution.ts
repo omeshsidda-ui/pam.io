@@ -1,5 +1,5 @@
-// Start at native density. Only large foreground buffers are eligible for
-// reduction. The floor and HTML overlay keep their display resolution.
+// Start at display density and reduce arena pixels only under sustained load.
+// The HTML interface stays at native density.
 export class ArenaResolution {
   private width = 0;
   private height = 0;
@@ -23,12 +23,13 @@ export class ArenaResolution {
       this.resetWindow();
       this.steadySeconds = 0;
     }
-    if (!live || document.hidden || dt <= 0 || dt > 0.12) {
+    if (!live || document.hidden || dt <= 0 || dt > 0.5) {
       this.resetWindow();
       return native * this.scale;
     }
     const pixels = w * h * native * native;
-    if (pixels <= 2560 * 1440) return native;
+    const floor = Math.min(1, Math.max(0.5, Math.sqrt((1280 * 720) / pixels)));
+    if (floor === 1) return native;
     this.frames++;
     this.windowSeconds += dt;
     if (dt < 0.011) this.fast++;
@@ -36,8 +37,6 @@ export class ArenaResolution {
     if (this.windowSeconds >= 1.5) {
       if (this.fast > this.frames * 0.6) this.budget = 1 / 120;
       if (this.late > this.frames * 0.15) {
-        // Preserve at least a 1440p-equivalent foreground on a 4K display.
-        const floor = Math.max(Math.min(1, 1 / native), Math.sqrt((2560 * 1440) / pixels));
         this.scale = Math.max(floor, this.scale - 0.125);
         this.steadySeconds = 0;
       } else if (this.late <= 1) {
