@@ -48,6 +48,16 @@ const groups: Record<string, number[]> = {
 let category = "All",
   selected = 0;
 const previews = new Map<HTMLCanvasElement, number>();
+const visiblePreviews = new Map<HTMLCanvasElement, number>();
+const previewObserver = new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    const canvas = entry.target as HTMLCanvasElement;
+    const id = previews.get(canvas);
+    if (entry.isIntersecting && id !== undefined) visiblePreviews.set(canvas, id);
+    else visiblePreviews.delete(canvas);
+  }
+}, { root: el("cards") });
+
 function details() {
   const portrait = (el("skin-portrait") as HTMLCanvasElement).getContext("2d")!;
   portrait.clearRect(0, 0, 192, 192);
@@ -72,6 +82,8 @@ function details() {
 function showShop() {
   el("categories").replaceChildren();
   el("cards").replaceChildren();
+  previewObserver.disconnect();
+  visiblePreviews.clear();
   previews.clear();
   for (const [name, ids] of Object.entries(groups)) {
     const btn = document.createElement("button"),
@@ -111,12 +123,13 @@ function showShop() {
       details();
     };
     el("cards").append(btn);
+    previewObserver.observe(canvas);
   }
   details();
 }
 export function animateMenu(time: number) {
   if (document.body.dataset.screen === "shop") {
-    for (const [canvas, id] of previews) preview(canvas, id, time + id, true);
+    for (const [canvas, id] of visiblePreviews) preview(canvas, id, time + id, true);
   } else if (document.body.dataset.screen === "home")
     preview(el("outfit") as HTMLCanvasElement, profile.skin, time);
 }
