@@ -166,6 +166,7 @@ function release(e: PointerEvent) {
   }
 }
 onblur = () => {
+  boostId = -1;
   holding = false;
   keyBoost = false;
   keys.clear();
@@ -236,9 +237,20 @@ for (const surface of [arena, stick]) {
     }
   });
 }
-el("boost").onpointerdown = (e) => {
+const boostButton = el("boost");
+for (const name of ["contextmenu", "selectstart", "dblclick"]) {
+  document.addEventListener(name, (e) => {
+    if (playing) e.preventDefault();
+  });
+}
+// Older mobile browsers may synthesize a zoom gesture after the second tap.
+boostButton.addEventListener("touchend", (e) => e.preventDefault(), { passive: false });
+boostButton.addEventListener("lostpointercapture", release);
+boostButton.onpointerdown = (e) => {
+  if (!playing || portrait.matches || boostId !== -1 || e.button !== 0) return;
+  e.preventDefault();
   boostId = e.pointerId;
-  el("boost").setPointerCapture(e.pointerId);
+  boostButton.setPointerCapture(e.pointerId);
   holding = true;
 };
 el("scores").onclick = () => {
