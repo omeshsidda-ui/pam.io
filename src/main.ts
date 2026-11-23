@@ -243,8 +243,10 @@ for (const name of ["contextmenu", "selectstart", "dblclick"]) {
     if (playing) e.preventDefault();
   });
 }
-// Older mobile browsers may synthesize a zoom gesture after the second tap.
-boostButton.addEventListener("touchend", (e) => e.preventDefault(), { passive: false });
+// Claim the touch before the browser recognizes a double-tap gesture.
+for (const event of ["touchstart", "touchend"] as const) {
+  boostButton.addEventListener(event, (e) => e.preventDefault(), { passive: false });
+}
 boostButton.addEventListener("lostpointercapture", release);
 boostButton.onpointerdown = (e) => {
   if (!playing || portrait.matches || boostId !== -1 || e.button !== 0) return;
