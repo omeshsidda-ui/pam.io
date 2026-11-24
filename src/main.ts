@@ -10,7 +10,7 @@ input.value = profile.name;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const endingSeconds = 1.05;
 const portrait = matchMedia("(pointer:coarse) and (orientation:portrait)");
-let world = new World(),
+let world = new World(true),
   playing = false,
   last = 0,
   acc = 0,
@@ -318,18 +318,23 @@ function frame(now: number) {
   const dt = Math.min(0.08, (now - last) / 1000);
   last = now;
   if (!portrait.matches) {
-    if (playing) {
+    const menu = !playing && document.body.dataset.screen !== "results";
+    if (menu && !world.spectator) {
+      world = new World(true);
+      acc = 0;
+    }
+    if (playing || (menu && document.body.dataset.screen === "home" && !reducedMotion.matches)) {
       acc += dt;
-      while (playing && acc >= STEP) {
+      while ((playing || menu) && acc >= STEP) {
         acc -= STEP;
-        step();
+        if (menu) world.update();
+        else step();
       }
     }
-    const results = document.body.dataset.screen === "results";
     const pullback = reducedMotion.matches
       ? 0
       : Math.min(1, deathTime / endingSeconds);
-    draw(world, playing || results, acc / STEP, now / 1000, pullback);
+    draw(world, acc / STEP, now / 1000, menu ? 0 : pullback);
     if (!playing) animateMenu(now * 0.0015);
   }
   if (profile.unlocked > unlocked) {

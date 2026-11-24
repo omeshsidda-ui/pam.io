@@ -19,7 +19,7 @@ import {
   boostWake,
 } from "./spriteCache";
 import { ArenaResolution } from "./resolution";
-import { lobby } from "./lobby";
+
 const canvas = document.querySelector<HTMLCanvasElement>("#arena")!,
   c = canvas.getContext("2d", { desynchronized: true, alpha: false })!;
 function readColors() {
@@ -116,7 +116,7 @@ let zoom = 1,
 function visible(x: number, y: number) {
   return x > left - 70 && x < right + 70 && y > top - 70 && y < bottom + 70;
 }
-function snake(s: Snake, f: number, leader = false, demo = false) {
+function snake(s: Snake, f: number, leader = false) {
   const r = width(s),
     n = s.body.length;
   const pixelScale = c.getTransform().a;
@@ -128,7 +128,7 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
         o = s.old[i],
         x = o.x + (p.x - o.x) * f,
         y = o.y + (p.y - o.y) * f;
-      if (demo || visible(x, y)) {
+      if (visible(x, y)) {
         if (pass === 0) {
           if (s.boost && i === 0) {
             c.save();
@@ -164,7 +164,7 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
             c.fillStyle = colors.ink;
             c.fillText(s.name, x, y - r - 9);
             if (leader)
-              c.drawImage(crown, x - 15, y - r - (demo ? 31 : 48), 30, 30);
+              c.drawImage(crown, x - 15, y - r - 48, 30, 30);
           }
         }
       }
@@ -175,7 +175,7 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
       o = s.old[i],
       x = o.x + (p.x - o.x) * f,
       y = o.y + (p.y - o.y) * f;
-    if (!demo && !visible(x, y)) continue;
+    if (!visible(x, y)) continue;
     const ahead = s.body[i - 1];
     marking(
       c,
@@ -190,9 +190,9 @@ function snake(s: Snake, f: number, leader = false, demo = false) {
     );
   }
 }
+let spectated: Snake | undefined;
 export function draw(
   world: World,
-  live: boolean,
   f: number,
   time: number,
   pullback = 0,
@@ -206,7 +206,7 @@ export function draw(
       h,
       devicePixelRatio,
       frameDt,
-      live && !world.player.dead,
+      world.spectator || !world.player.dead,
     ),
     pw = Math.round(w * dpr),
     ph = Math.round(h * dpr);
@@ -217,40 +217,34 @@ export function draw(
   c.setTransform(pw / w, 0, 0, ph / h, 0, 0);
 
   c.imageSmoothingQuality = "low";
-  let originX = 0,
-    originY = 0;
   c.save();
-  if (live) {
-    const s = world.player;
-    if (!s.dead) {
-      world.cameraMass = framingMass(world.cameraMass, s.mass);
-      world.cameraZoom +=
-        (playZoom(world.cameraMass, w, h) - world.cameraZoom) *
-        cameraEase(frameDt);
-    }
-    const ease = pullback * pullback * (3 - 2 * pullback);
-    zoom = world.cameraZoom * (1 - 0.25 * ease);
-    if (s.dead) f = 1;
-    cx = s.old[0].x + (s.x - s.old[0].x) * f;
-    cy = s.old[0].y + (s.y - s.old[0].y) * f;
-    const shake = cameraShake(time, world.shake);
-    originX = w / 2 + shake.x - cx * zoom;
-    originY = h / 2 + shake.y - cy * zoom;
+  // Follow a competitor for its whole run, switching only on elimination.
+  if (world.spectator && (!spectated || !world.snakes.includes(spectated)))
+    spectated = world.ranking[0];
+  const s = world.spectator && spectated ? spectated : world.player;
+  if (!s.dead) {
+    world.cameraMass = framingMass(world.cameraMass, s.mass);
+    world.cameraZoom +=
+      (playZoom(world.cameraMass, w, h) - world.cameraZoom) *
+      cameraEase(frameDt);
   }
-  left = live ? cx - w / (2 * zoom) : 0;
-  top = live ? cy - h / (2 * zoom) : 0;
-  right = left + (live ? w / zoom : w);
-  bottom = top + (live ? h / zoom : h);
-  drawFloor(w, h, live ? zoom : 1, originX, originY);
-  if (live) {
-    c.translate(originX, originY);
-    c.scale(zoom, zoom);
-  }
-  if (!live) {
-    lobby(c, w, h, time, (s, alpha) => snake(s, alpha, s.id === 1, true));
-    c.restore();
-    return;
-  }
+  const ease = pullback * pullback * (3 - 2 * pullback);
+  zoom = world.cameraZoom * (1 - 0.25 * ease);
+  if (s.dead) f = 1;
+  cx = s.old[0].x + (s.x - s.old[0].x) * f;
+  cy = s.old[0].y + (s.y - s.old[0].y) * f;
+  const shake = cameraShake(time, world.shake);
+  if (world.spectator) zoom *= 0.65;
+  // Leave the featured snake visible beside the central Play panel.
+  const originX = w * (world.spectator ? 0.24 : 0.5) + shake.x - cx * zoom;
+  const originY = h / 2 + shake.y - cy * zoom;
+  left = -originX / zoom;
+  top = -originY / zoom;
+  right = left + w / zoom;
+  bottom = top + h / zoom;
+  drawFloor(w, h, zoom, originX, originY);
+  c.translate(originX, originY);
+  c.scale(zoom, zoom);
   // Darken the out-of-bounds area and mark the approach before the lethal edge.
   if (
     Math.hypot(

@@ -44,9 +44,14 @@ export class World {
   cameraMass = 65;
   cameraZoom = playZoom(65, innerWidth, innerHeight);
   private nextBossAttempt = 0;
-  constructor() {
+  constructor(readonly spectator = false) {
     this.player = this.spawn(0)!;
     for (let i = 1; i <= BOTS; i++) if (!this.spawn(i)) this.waiting.add(i);
+    if (spectator) {
+      // Keep the camera anchor out of collision, scoring, and respawn logic.
+      this.snakes.shift();
+      this.player.dead = true;
+    }
     this.seedOpeningFood();
     while (this.food.length < FOOD) this.pellet();
     this.index();
@@ -75,7 +80,7 @@ export class World {
         const dx = p.x - this.player.x,
           dy = p.y - this.player.y;
         if (Math.hypot(dx, dy) < footprint + 440) continue;
-        if (Math.abs(dx) <= halfW && Math.abs(dy) <= halfH) continue;
+        if (!this.spectator && Math.abs(dx) <= halfW && Math.abs(dy) <= halfH) continue;
         if (
           this.snakes.some(
             (s) =>
@@ -495,7 +500,7 @@ export class World {
         if (this.spawn(id)) this.waiting.delete(id);
     // Publish one shared standings snapshot. Retire a fallen king immediately.
     if (this.tick % 24 === 0 || this.ranking.some((s) => s.dead)) this.rank();
-    if (this.tick % 120 === 0)
+    if (!this.spectator && this.tick % 120 === 0)
       this.difficulty.sample(
         this.player,
         this.tick,
