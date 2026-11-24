@@ -1,4 +1,4 @@
-import { R, angleDiff, CHARGE_SECONDS } from "../config";
+import { R, STEP, angleDiff, CHARGE_SECONDS } from "../config";
 import type { World } from "../engine/world";
 import type { Snake } from "../types";
 import {
@@ -190,7 +190,6 @@ function snake(s: Snake, f: number, leader = false) {
     );
   }
 }
-let spectated: Snake | undefined;
 export function draw(
   world: World,
   f: number,
@@ -218,26 +217,30 @@ export function draw(
 
   c.imageSmoothingQuality = "low";
   c.save();
-  // Follow a competitor for its whole run, switching only on elimination.
-  if (world.spectator && (!spectated || !world.snakes.includes(spectated)))
-    spectated = world.ranking[0];
-  const s = world.spectator && spectated ? spectated : world.player;
-  if (!s.dead) {
-    world.cameraMass = framingMass(world.cameraMass, s.mass);
-    world.cameraZoom +=
-      (playZoom(world.cameraMass, w, h) - world.cameraZoom) *
-      cameraEase(frameDt);
+  let originX = w / 2;
+  let originY = h / 2;
+  if (world.spectator) {
+    // Keep even the viewport corners inside the arena's warning ring.
+    const minZoom = Math.hypot(w, h) / (2 * (R - 120));
+    const pulse = 1 + 0.035 * (1 + Math.sin(world.tick * STEP / 5));
+    zoom = Math.max(minZoom, playZoom(65, w, h) * 0.65) * pulse;
+  } else {
+    const s = world.player;
+    if (!s.dead) {
+      world.cameraMass = framingMass(world.cameraMass, s.mass);
+      world.cameraZoom +=
+        (playZoom(world.cameraMass, w, h) - world.cameraZoom) *
+        cameraEase(frameDt);
+    }
+    const ease = pullback * pullback * (3 - 2 * pullback);
+    zoom = world.cameraZoom * (1 - 0.25 * ease);
+    if (s.dead) f = 1;
+    cx = s.old[0].x + (s.x - s.old[0].x) * f;
+    cy = s.old[0].y + (s.y - s.old[0].y) * f;
+    const shake = cameraShake(time, world.shake);
+    originX += shake.x - cx * zoom;
+    originY += shake.y - cy * zoom;
   }
-  const ease = pullback * pullback * (3 - 2 * pullback);
-  zoom = world.cameraZoom * (1 - 0.25 * ease);
-  if (s.dead) f = 1;
-  cx = s.old[0].x + (s.x - s.old[0].x) * f;
-  cy = s.old[0].y + (s.y - s.old[0].y) * f;
-  const shake = cameraShake(time, world.shake);
-  if (world.spectator) zoom *= 0.65;
-  // Leave the featured snake visible beside the central Play panel.
-  const originX = w * (world.spectator ? 0.24 : 0.5) + shake.x - cx * zoom;
-  const originY = h / 2 + shake.y - cy * zoom;
   left = -originX / zoom;
   top = -originY / zoom;
   right = left + w / zoom;
