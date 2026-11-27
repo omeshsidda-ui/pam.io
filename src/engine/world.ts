@@ -12,7 +12,7 @@ import { Difficulty } from "./difficulty";
 import { playZoom } from "./camera";
 import { Grid } from "./spatialGrid";
 import { move, width } from "./physics";
-import { callScavengers, decide } from "./botAI";
+import { avoidHazards, callScavengers, decide } from "./botAI";
 import type { Snake, Pellet, Segment, Particle, Trap } from "../types";
 import { sound } from "../audio/sfx";
 import { profile, progress } from "../storage";
@@ -464,8 +464,9 @@ export class World {
     this.shake *= 0.9;
     this.noticeTime -= STEP;
     const leader = this.ranking[0] ?? this.player;
-    for (const s of this.snakes)
-      if (!s.dead && s.id && (s.think -= STEP) <= 0)
+    for (const s of this.snakes) {
+      if (s.dead || !s.id) continue;
+      if ((s.think -= STEP) <= 0)
         decide(
           s,
           this.fg,
@@ -474,6 +475,8 @@ export class World {
           this.difficulty.level,
           this.tick,
         );
+      else if (!s.boss) avoidHazards(s, this.bg);
+    }
     for (const s of this.snakes) {
       if (s.dead) continue;
       move(s);

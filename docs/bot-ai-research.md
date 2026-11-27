@@ -34,10 +34,17 @@ Measured with `BOT_SURVIVAL_REPORT=1 node --test tests/bot-survival.mjs` across 
 
 | Metric | Baseline (unpatched) | After |
 | --- | --- | --- |
-| Accidental bot deaths into passive cruising player (5 min total) | 11 | Pending implementation |
-| Mean accidental bot deaths per minute | 2.20 | Pending implementation |
-| Bot wall deaths (5 min total / mean per min) | 5 / 1.00 | Pending implementation |
-| Bot-vs-bot + wall deaths per minute | 154.60 | Pending implementation |
-| Mean bot mass (sampled every 1 s) | 500.8 | Pending implementation |
-| Mean bot survival time (s) | 10.07 | Pending implementation |
-| Intentional player boost-cutoff sanity test | Pass (1 kill) | Pending implementation |
+| Accidental bot deaths into passive cruising player (5 min total) | 11 | 0 |
+| Mean accidental bot deaths per minute | 2.20 | 0.00 |
+| Bot wall deaths (5 min total / mean per min) | 5 / 1.00 | 1 / 0.20 |
+| Bot-vs-bot + wall deaths per minute | 154.60 | 9.20 |
+| Mean bot mass (sampled every 1 s) | 500.8 | 517.2 |
+| Mean bot survival time (s) | 10.07 | 46.58 |
+| Intentional player boost-cutoff sanity test | Pass (1 kill) | Pass (1 kill) |
+
+### Verification
+
+- **Unseen seeds (`[101, 202, 303, 404, 505]`):** Across five additional 60-second passive cruising player runs (18,000 ticks total, starting `recentDifficulty = 0.45`), bots recorded 4 accidental deaths into the player (0.80/min), 2 wall deaths (0.40/min), 46 bot-vs-bot deaths (9.60/min bot-vs-bot + wall combined), mean bot mass 496.2, and mean bot survival time 45.25 s.
+- **60 Hz simulation CPU cost:** Across the 17,648 ticks in those runs with all 32 bots active, `World.update()` took a mean of 0.75 ms, 95th percentile 1.12 ms, and max 11.04 ms (overall across all 18,000 ticks: mean 0.75 ms, p95 1.13 ms, max 11.04 ms), well within the 16.67 ms 60 Hz frame budget.
+- **King Cobra (`s.boss`) and large-snake wall clearance:** In focused SSR probes, King Cobra bypassed `avoidHazards()`, kept `s.boost = true`, and tracked the leader past flanking snakes with at most 11.19° aim offset from the leader lead point while closing distance from 996.7 px to 799.2 px over 36 ticks before colliding with a flanker. At mass 800,000 (`width` 36.83 px, walking turn radius 86.80 px), both walking (`SPEED`) and boosting (`SPEED * BOOST`, dropping boost on tick 0) bots cleared a head-on wall approach from 100 px inside the lethal boundary (`R - width - 100 = 2163.17` px) with 11.02–12.10 px to spare (starting at `R - 100 = 2200` px leaves only 63.17 px before the lethal rim, below a walking 90° turn arc).
+- **Headless Chromium frame pacing:** Serving the production build (`npm run build` via `vite preview`) at 1280 × 720, clicking `#play`, and steering with mouse and keyboard produced zero console or page errors. Across 240 `requestAnimationFrame` intervals during active play, callback pacing averaged 16.67 ms (median 16.7 ms, 95th percentile 16.7 ms, max 16.8 ms, zero intervals over 25 ms).

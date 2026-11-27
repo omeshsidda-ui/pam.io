@@ -112,32 +112,191 @@ export function callScavengers(
   }
 }
 
-// Sample a reachable arc, including the distance travelled before a broad turn completes.
+// Scratch space is shared by the synchronous bot updates. Collect local grid
+// entries once, then test reachable arcs without querying the grid per sample.
+interface Obstacle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  pad: number;
+  headPad: number;
+  neckTime: number;
+}
+const obstacles: Obstacle[] = [];
+const escapeScores = new Uint8Array(SECTORS);
+const sectorAngle = TAU / SECTORS;
+const strideLimit = 8;
+const headHorizon = 0.24;
+
 function safeSteps(
   s: Snake,
   aim: number,
-  boosting: boolean,
-  body: Grid<Segment>,
+  speed: number,
+  rate: number,
+  radius: number,
+  count: number,
+  distance: number,
 ) {
-  let { x, y, a } = s;
-  const dt = 0.075;
-  const turn = turnRate(s) * dt;
-  const stride = SPEED * (boosting ? BOOST : 1) * dt;
-  const radius = width(s);
-  for (let step = 0; step < 5; step++) {
-    a += Math.max(-turn, Math.min(turn, angleDiff(aim, a)));
+  // Bound distance between samples at either speed. Compare heads at the same
+  // arrival time so a rival that has already passed does not block the arc.
+  const steps = Math.ceil(distance / strideLimit);
+  const stride = distance / steps;
+  const dt = stride / speed;
+  const turn = rate * dt;
+  const rim = (R - radius) ** 2;
+  let x = 0, y = 0;
+  let a = s.a, remaining = angleDiff(aim, a);
+  for (let j = 1; j <= steps; j++) {
+    const delta = Math.max(-turn, Math.min(turn, remaining));
+    a += delta;
+    remaining -= delta;
     x += Math.cos(a) * stride;
     y += Math.sin(a) * stride;
-    if (Math.hypot(x, y) > R - radius) return step;
-    let blocked = false;
-    body.near(x, y, radius + 50, (p) => {
-      if (!blocked && p.s !== s && !p.s.dead)
-        blocked =
-          Math.hypot(x - p.x, y - p.y) < radius + width(p.s) + stride * 0.3;
-    });
-    if (blocked) return step;
+    if ((s.x + x) ** 2 + (s.y + y) ** 2 >= rim) return j - 1;
+    const lead = j * dt;
+    for (let k = 0; k < count; k++) {
+      const p = obstacles[k];
+      const dx = x - p.x, dy = y - p.y;
+      if (p.neckTime) {
+        if ((dx - p.vx * lead) ** 2 + (dy - p.vy * lead) ** 2 <= p.headPad ** 2)
+          return j - 1;
+        // A moving head also lays down a neck. Leave space behind the head
+        // when choosing which side of a converging rival to pass.
+        const neck = Math.max(0, lead - p.neckTime);
+        if ((dx - p.vx * neck) ** 2 + (dy - p.vy * neck) ** 2 <= p.pad ** 2)
+          return j - 1;
+      } else if (dx * dx + dy * dy <= p.pad ** 2) return j - 1;
+    }
   }
-  return 5;
+  return steps;
+}
+
+// Strategic decisions check the longer approach. Between decisions the reflex
+// checks immediate travel and the turn the snake is currently trying to make.
+export function avoidHazards(
+  s: Snake,
+  body: Grid<Segment>,
+  plan?: { approach?: number; surrounded: boolean },
+) {
+  const speed = SPEED * (s.boost ? BOOST : 1);
+  const radius = width(s), rate = turnRate(s), turnRadius = speed / rate;
+  const hx = Math.cos(s.a), hy = Math.sin(s.a);
+  // Allow room to turn beyond the distance covered during an approach.
+  const approachRange = speed * 0.375 + turnRadius;
+  // An escape must be checked at least as far as the hazard that triggered it.
+  const escapeRange = Math.max(96, 2 * turnRadius, approachRange);
+  const staticReach = escapeRange + radius + 38;
+  const reach = staticReach + SPEED * BOOST * headHorizon;
+  const nearWall = s.x * s.x + s.y * s.y >= (R - approachRange - radius) ** 2;
+  let count = 0, closingHead = false;
+  let lastSnake: Snake | undefined, otherRadius = 0;
+  body.near(s.x, s.y, reach, (p) => {
+    if (p.s === s || p.s.dead) return;
+    const x = p.x - s.x, y = p.y - s.y;
+    const range = p.i === 0 ? reach : staticReach;
+    if (x * x + y * y > range * range) return;
+    if (lastSnake !== p.s) {
+      lastSnake = p.s;
+      otherRadius = width(p.s);
+    }
+    const obstacle = obstacles[count] ??
+      (obstacles[count] = { x: 0, y: 0, vx: 0, vy: 0, pad: 0, headPad: 0, neckTime: 0 });
+    count++;
+    obstacle.x = x;
+    obstacle.y = y;
+    const rivalSpeed = p.i === 0 ? SPEED * (p.s.boost ? BOOST : 1) : 0;
+    obstacle.vx = rivalSpeed ? rivalSpeed * Math.cos(p.s.a) : 0;
+    obstacle.vy = rivalSpeed ? rivalSpeed * Math.sin(p.s.a) : 0;
+    // The nose and the body tube are narrower than two full head widths.
+    obstacle.pad = 0.9 * radius + 0.82 * otherRadius;
+    obstacle.neckTime = rivalSpeed ? 1.28 * otherRadius / rivalSpeed : 0;
+    if (rivalSpeed) {
+      // A head can change heading between samples. Budget another head width
+      // for a glancing pass, including when a hunter is the larger snake.
+      obstacle.headPad = obstacle.pad + otherRadius;
+      const vx = obstacle.vx - hx * speed, vy = obstacle.vy - hy * speed;
+      const time = -(x * vx + y * vy) / (vx * vx + vy * vy || 1);
+      if (
+        time > 0 && time < headHorizon &&
+        (x + vx * time) ** 2 + (y + vy * time) ** 2 < obstacle.headPad ** 2
+      ) closingHead = true;
+    } else obstacle.headPad = 0;
+  });
+  if (!count && !nearWall && !plan?.surrounded) return false;
+
+  let blockedLeft = false, blockedRight = false;
+  const checkTurns = (arcRadius: number) => {
+    blockedLeft = blockedRight = false;
+    for (let i = 0; i < count; i++) {
+      const { x, y, pad } = obstacles[i];
+      const forward = x * hx + y * hy, side = y * hx - x * hy;
+      if (
+        forward >= 0 &&
+        forward * forward + (Math.abs(side) - arcRadius) ** 2 <
+          (arcRadius + pad) ** 2
+      ) {
+        if (side > 0) blockedLeft = true;
+        if (side < 0) blockedRight = true;
+        if (blockedLeft && blockedRight) break;
+      }
+    }
+  };
+  checkTurns(turnRadius);
+  const trappedTurn = (aim: number) => {
+    const offset = angleDiff(aim, s.a);
+    return (offset > sectorAngle / 2 && blockedLeft) ||
+      (offset < -sectorAngle / 2 && blockedRight);
+  };
+  const distance = plan || nearWall ? approachRange : turnRadius * 0.5;
+  const steps = Math.ceil(distance / strideLimit);
+  const clearPath = (aim: number) =>
+    !trappedTurn(aim) &&
+    safeSteps(s, aim, speed, rate, radius, count, distance) === steps;
+  if (
+    !closingHead && !plan?.surrounded && clearPath(s.aim) &&
+    (plan?.approach === undefined || clearPath(plan.approach))
+  ) return false;
+
+  s.boost = false;
+  if (speed !== SPEED) checkTurns(SPEED / rate);
+  rushes.delete(s);
+  targets.delete(s);
+  let best = -1;
+  for (let i = 0; i < SECTORS; i++) {
+    const aim = i * sectorAngle;
+    const clear = safeSteps(s, aim, SPEED, rate, radius, count, escapeRange);
+    // Prefer the open flank among otherwise equally reachable arcs. In a
+    // complete trap, maximize travel before contact.
+    const score = 2 * clear + Number(!trappedTurn(aim));
+    escapeScores[i] = score;
+    best = Math.max(best, score);
+  }
+  steerIntoGap(s, best);
+  return true;
+}
+
+function steerIntoGap(s: Snake, best: number) {
+  // Start after a blocked sector so a gap spanning angle zero stays intact.
+  let start = 0;
+  while (start < SECTORS && escapeScores[start] === best) start++;
+  if (start === SECTORS) return; // Every heading has the same reachable clearance.
+  let run = 0, longest = 0, nearest = Infinity;
+  for (let j = 1; j <= SECTORS; j++) {
+    const i = (start + j) % SECTORS;
+    if (escapeScores[i] === best) {
+      run++;
+    } else if (run) {
+      const middle = (start + j - (run + 1) / 2) * sectorAngle;
+      const distance = Math.abs(angleDiff(middle, s.a));
+      if (run > longest || (run === longest && distance < nearest)) {
+        longest = run;
+        nearest = distance;
+        s.aim = middle;
+      }
+      run = 0;
+    }
+  }
 }
 
 export function decide(
@@ -160,13 +319,13 @@ export function decide(
     rush && tick < rush.until && rush.pellet.v > 0 ? rush.pellet : undefined;
   const vision = 320 + 160 * skill;
   body.near(s.x, s.y, vision, (p) => {
-    if (p.s === s || p.s.dead) return;
+    if (s.boss || p.s === s || p.s.dead) return;
     const dx = p.x - s.x,
       dy = p.y - s.y,
       d = Math.hypot(dx, dy),
       i = sector(Math.atan2(dy, dx));
     open[i] = Math.min(open[i], d);
-    if (p.i !== 0 || s.boss || d > vision) return;
+    if (p.i !== 0 || d > vision) return;
     if (drop || (p.s.id === 0 && tick < (attackAfter.get(s) ?? 0))) return;
     // A confident hunter can cut across a bigger rival from the side.
     // Keep head-on and tail-chase attempts restricted to smaller prey.
@@ -227,7 +386,7 @@ export function decide(
     : prey
       ? attackBoost
       : loot && (s.role === 1 || s.role === 4);
-  const lookahead = 145 + skill * 70 + (s.boost ? 35 : 0);
+  const lookahead = 175 + (s.boost ? 35 : 0);
   for (let i = 0; i < SECTORS; i++) {
     const a = (i * TAU) / SECTORS;
     if (
@@ -236,16 +395,17 @@ export function decide(
     )
       open[i] = 0;
   }
+  const danger = width(s) + SPEED / turnRate(s);
+  const margin = s.boss && s.boost ? 75 : s.role === 3 ? 145 : s.boost ? 140 : 112;
   let best = -Infinity;
   for (let i = 0; i < SECTORS; i++) {
-    const a = (i * TAU) / SECTORS,
-      margin =
-        (s.role === 3 ? 135 : s.boost ? (s.boss ? 75 : 128) : 98) + skill * 28;
+    const a = (i * TAU) / SECTORS;
     const clear = Math.min(
       open[i],
       open[(i + SECTORS - 1) % SECTORS] + 28,
       open[(i + 1) % SECTORS] + 28,
     );
+    if (!s.boss && clear < danger) continue;
     const score =
       Math.min(0, clear - margin) * 0.14 +
       Math.cos(angleDiff(a, goal)) * (prey || drop ? 3.5 : 0.5) +
@@ -260,23 +420,10 @@ export function decide(
     }
   }
   if (s.boss && best < -3) s.boost = true;
-  const abort =
-    !s.boss &&
-    (s.boost || prey || drop || best < -3) &&
-    safeSteps(s, s.aim, s.boost, body) < 5;
-  if (abort) {
-    s.boost = false;
-    let clearance = safeSteps(s, s.aim, false, body);
-    for (const offset of [-Math.PI / 2, Math.PI / 2]) {
-      const aim = s.a + offset;
-      const steps = safeSteps(s, aim, false, body);
-      if (steps > clearance) {
-        clearance = steps;
-        s.aim = aim;
-      }
-    }
-    targets.delete(s);
-  }
+  const abort = s.boss ? false : avoidHazards(s, body, {
+    approach: prey || drop ? goal : undefined,
+    surrounded: best === -Infinity,
+  });
   if (leftPlayer || (abort && prey?.id === 0))
     attackAfter.set(s, tick + (3 - 2.4 * skill) / STEP);
   s.think = rand(0.18, 0.28) * (1 - 0.4 * skill);
