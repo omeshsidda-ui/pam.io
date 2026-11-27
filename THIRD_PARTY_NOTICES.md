@@ -11,3 +11,14 @@ The guides, wireframes, and downloaded reference images under `snake.io/` were s
 ## Color references
 
 The interface palettes were informed by ENDESGA 32 and Kerrie Lake’s Resurrect 64. [ENDESGA 32](https://lospec.com/palette-list/endesga-32) · [Resurrect 64](https://lospec.com/palette-list/resurrect-64)
+
+## Bot AI research references
+
+The hazard-avoidance research in [bot AI research](docs/bot-ai-research.md) studied algorithmic concepts from the following open-source projects:
+
+- [`j-c-m/Slither.io-bot`](https://github.com/j-c-m/Slither.io-bot) (MIT)
+- [`jfbarras/slimy-snake`](https://github.com/jfbarras/slimy-snake)
+- [`dzaczek/slbot`](https://github.com/dzaczek/slbot)
+- [`ermiyaeskandary/Slither.io-bot`](https://github.com/ermiyaeskandary/Slither.io-bot) (MPL-2.0)
+
+Only high-level algorithmic concepts were studied; no third-party code was copied into `pam.io`.

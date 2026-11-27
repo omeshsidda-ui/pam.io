@@ -66,6 +66,7 @@ TypeScript runs the simulation at 60 Hz. Each tick moves the snakes before resol
 ## Design docs
 
 - [Movement and Snake.io comparison](docs/snake-io-comparison.md)
+- [Bot AI research](docs/bot-ai-research.md) · [Bot hazard avoidance ADR](docs/adr/0001-bot-hazard-avoidance.md)
 - [Player flow and orientation](snake.io/01-user-flow-and-orientation.md) · [Home and skin shop](snake.io/02-home-and-skin-shop.md)
 - [Gameplay HUD and rendering](snake.io/03-gameplay-hud-and-hd-visuals.md) · [Game over and visual style](snake.io/04-gameover-popups-and-style.md)
 - [Wireframes](snake.io/wireframes/) · [Screenshot sources](snake.io/screenshots/SCREENSHOT_MANIFEST.md)
