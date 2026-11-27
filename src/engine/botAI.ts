@@ -75,6 +75,7 @@ function coil(s: Snake, target: Snake) {
 
 const rushes = new WeakMap<Snake, { pellet: Pellet; until: number }>();
 const attackAfter = new WeakMap<Snake, number>();
+const evading = new WeakMap<Snake, { aim: number; until: number }>();
 
 // Each responder approaches the part of the trail closest to its own head.
 export function callScavengers(
@@ -178,6 +179,7 @@ export function avoidHazards(
   s: Snake,
   body: Grid<Segment>,
   plan?: { approach?: number; surrounded: boolean },
+  tick = 0,
 ) {
   const speed = SPEED * (s.boost ? BOOST : 1);
   const radius = width(s), rate = turnRate(s), turnRadius = speed / rate;
@@ -223,7 +225,10 @@ export function avoidHazards(
       ) closingHead = true;
     } else obstacle.headPad = 0;
   });
-  if (!count && !nearWall && !plan?.surrounded) return false;
+  if (!count && !nearWall && !plan?.surrounded) {
+    evading.delete(s);
+    return false;
+  }
 
   let blockedLeft = false, blockedRight = false;
   const checkTurns = (arcRadius: number) => {
@@ -253,15 +258,30 @@ export function avoidHazards(
   const clearPath = (aim: number) =>
     !trappedTurn(aim) &&
     safeSteps(s, aim, speed, rate, radius, count, distance) === steps;
+  const active = evading.get(s);
   if (
     !closingHead && !plan?.surrounded && clearPath(s.aim) &&
-    (plan?.approach === undefined || clearPath(plan.approach))
-  ) return false;
+    (plan?.approach === undefined || clearPath(plan.approach)) &&
+    (!active || tick > active.until)
+  ) {
+    evading.delete(s);
+    return false;
+  }
 
   s.boost = false;
   if (speed !== SPEED) checkTurns(SPEED / rate);
   rushes.delete(s);
   targets.delete(s);
+  s.think = Math.max(s.think, 0.14);
+
+  // Hold the current escape turn while its score remains within 1 of the best
+  // alternative so bots do not ping-pong across opposite flanks on consecutive ticks.
+  const activeScore =
+    active && tick <= active.until
+      ? 2 * safeSteps(s, active.aim, SPEED, rate, radius, count, escapeRange) +
+        Number(!trappedTurn(active.aim))
+      : -1;
+
   let best = -1;
   for (let i = 0; i < SECTORS; i++) {
     const aim = i * sectorAngle;
@@ -272,11 +292,16 @@ export function avoidHazards(
     escapeScores[i] = score;
     best = Math.max(best, score);
   }
-  steerIntoGap(s, best);
+  if (activeScore >= 0 && activeScore >= best - 1) {
+    s.aim = active!.aim;
+    return true;
+  }
+  steerIntoGap(s, best, active?.aim ?? s.aim);
+  evading.set(s, { aim: s.aim, until: tick + 14 });
   return true;
 }
 
-function steerIntoGap(s: Snake, best: number) {
+function steerIntoGap(s: Snake, best: number, refAim: number) {
   // Start after a blocked sector so a gap spanning angle zero stays intact.
   let start = 0;
   while (start < SECTORS && escapeScores[start] === best) start++;
@@ -288,7 +313,9 @@ function steerIntoGap(s: Snake, best: number) {
       run++;
     } else if (run) {
       const middle = (start + j - (run + 1) / 2) * sectorAngle;
-      const distance = Math.abs(angleDiff(middle, s.a));
+      const distance =
+        Math.abs(angleDiff(middle, refAim)) * 0.7 +
+        Math.abs(angleDiff(middle, s.a)) * 0.3;
       if (run > longest || (run === longest && distance < nearest)) {
         longest = run;
         nearest = distance;
@@ -420,10 +447,17 @@ export function decide(
     }
   }
   if (s.boss && best < -3) s.boost = true;
-  const abort = s.boss ? false : avoidHazards(s, body, {
-    approach: prey || drop ? goal : undefined,
-    surrounded: best === -Infinity,
-  });
+  const abort = s.boss
+    ? false
+    : avoidHazards(
+        s,
+        body,
+        {
+          approach: prey || drop ? goal : undefined,
+          surrounded: best === -Infinity,
+        },
+        tick,
+      );
   if (leftPlayer || (abort && prey?.id === 0))
     attackAfter.set(s, tick + (3 - 2.4 * skill) / STEP);
   s.think = rand(0.18, 0.28) * (1 - 0.4 * skill);

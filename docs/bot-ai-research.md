@@ -34,12 +34,12 @@ Measured with `BOT_SURVIVAL_REPORT=1 node --test tests/bot-survival.mjs` across 
 
 | Metric | Baseline (unpatched) | After |
 | --- | --- | --- |
-| Accidental bot deaths into passive cruising player (5 min total) | 11 | 0 |
-| Mean accidental bot deaths per minute | 2.20 | 0.00 |
-| Bot wall deaths (5 min total / mean per min) | 5 / 1.00 | 1 / 0.20 |
-| Bot-vs-bot + wall deaths per minute | 154.60 | 9.20 |
-| Mean bot mass (sampled every 1 s) | 500.8 | 517.2 |
-| Mean bot survival time (s) | 10.07 | 46.58 |
+| Accidental bot deaths into passive cruising player (5 min total) | 11 | 2 |
+| Mean accidental bot deaths per minute | 2.20 | 0.40 |
+| Bot wall deaths (5 min total / mean per min) | 5 / 1.00 | 3 / 0.60 |
+| Bot-vs-bot + wall deaths per minute | 154.60 | 6.00 |
+| Mean bot mass (sampled every 1 s) | 500.8 | 511.3 |
+| Mean bot survival time (s) | 10.07 | 49.98 |
 | Intentional player boost-cutoff sanity test | Pass (1 kill) | Pass (1 kill) |
 
 ### Verification

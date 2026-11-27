@@ -475,7 +475,7 @@ export class World {
           this.difficulty.level,
           this.tick,
         );
-      else if (!s.boss) avoidHazards(s, this.bg);
+      else if (!s.boss) avoidHazards(s, this.bg, undefined, this.tick);
     }
     for (const s of this.snakes) {
       if (s.dead) continue;
