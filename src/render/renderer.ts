@@ -21,7 +21,7 @@ import {
 import { ArenaResolution } from "./resolution";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#arena")!,
-  c = canvas.getContext("2d", { desynchronized: true, alpha: false })!;
+  c = canvas.getContext("2d", { alpha: false })!;
 function readColors() {
   const style = getComputedStyle(document.documentElement);
   const get = (role: string) => style.getPropertyValue("--" + role).trim();
@@ -42,8 +42,12 @@ function readColors() {
 const resolution = new ArenaResolution();
 let colors = readColors();
 const tile = document.createElement("canvas");
-const stamp = document.createElement("canvas");
-let pattern: CanvasPattern | null = null;
+interface FloorLevel {
+  w: number;
+  h: number;
+  pattern: CanvasPattern;
+}
+let floorLevels: FloorLevel[] = [];
 
 function paintTile() {
   tile.width = 288 * 4;
@@ -67,36 +71,42 @@ function paintTile() {
       t.fill();
       t.stroke();
     }
-  pattern = null;
+  // Pre-downsample a mip chain once per theme so drawFloor can lock to exact
+  // world coordinates without rebuilding patterns or snapping tile sizes on zoom.
+  floorLevels = [{ w: tile.width, h: tile.height, pattern: c.createPattern(tile, "repeat")! }];
+  let prev: HTMLCanvasElement = tile;
+  while (prev.width >= 144) {
+    const next = document.createElement("canvas");
+    next.width = Math.round(prev.width / 2);
+    next.height = Math.round(prev.height / 2);
+    const ctx = next.getContext("2d", { alpha: false })!;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(prev, 0, 0, next.width, next.height);
+    floorLevels.push({ w: next.width, h: next.height, pattern: c.createPattern(next, "repeat")! });
+    prev = next;
+  }
 }
 
 function drawFloor(w: number, h: number, scale: number, x: number, y: number) {
-  // Cache a single repeat near its final pixel size. The opaque fill also
-  // erases the previous frame without a separate full-screen clear.
-  const periodX = 144 * scale,
-    periodY = 83 * scale;
-  const sw = Math.max(1, Math.round((periodX * canvas.width) / w));
-  const sh = Math.max(1, Math.round((periodY * canvas.height) / h));
-  if (!pattern || stamp.width !== sw || stamp.height !== sh) {
-    stamp.width = sw;
-    stamp.height = sh;
-    const brush = stamp.getContext("2d", { alpha: false })!;
-    brush.imageSmoothingQuality = "high";
-    brush.drawImage(tile, 0, 0, sw, sh);
-    pattern = c.createPattern(stamp, "repeat")!;
+  // Align the repeating hex grid directly to world coordinates so zoom pulses
+  // and camera movement never snap tile sizes or drift relative to snakes.
+  const dprX = canvas.width / w,
+    dprY = canvas.height / h;
+  const periodX = 144 * scale * dprX,
+    periodY = 83 * scale * dprY;
+  let level = floorLevels[0];
+  for (let i = 1; i < floorLevels.length; i++) {
+    if (floorLevels[i].w >= periodX) level = floorLevels[i];
+    else break;
   }
-  // Anchor subpixel rounding at the camera center so the floor follows the
-  // player through a zoom. Integer bitmap offsets avoid filtering every pixel.
-  const tx = Math.round(
-    (((x - w / 2) % periodX) * sw) / periodX + canvas.width / 2,
-  );
-  const ty = Math.round(
-    (((y - h / 2) % periodY) * sh) / periodY + canvas.height / 2,
-  );
+  const sx = periodX / level.w,
+    sy = periodY / level.h;
+  const ox = (((x * dprX) % periodX) + periodX) % periodX;
+  const oy = (((y * dprY) % periodY) + periodY) % periodY;
   c.save();
-  c.setTransform(1, 0, 0, 1, tx, ty);
-  c.fillStyle = pattern;
-  c.fillRect(-tx, -ty, canvas.width, canvas.height);
+  c.setTransform(sx, 0, 0, sy, ox, oy);
+  c.fillStyle = level.pattern;
+  c.fillRect(-ox / sx - 1, -oy / sy - 1, canvas.width / sx + 2, canvas.height / sy + 2);
   c.restore();
 }
 
@@ -222,7 +232,7 @@ export function draw(
   if (world.spectator) {
     // Keep even the viewport corners inside the arena's warning ring.
     const minZoom = Math.hypot(w, h) / (2 * (R - 120));
-    const pulse = 1 + 0.035 * (1 + Math.sin(world.tick * STEP / 5));
+    const pulse = 1 + 0.035 * (1 + Math.sin(((world.tick + f) * STEP) / 5));
     zoom = Math.max(minZoom, playZoom(65, w, h) * 0.65) * pulse;
   } else {
     const s = world.player;

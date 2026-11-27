@@ -315,7 +315,7 @@ function step() {
   if (world.tick % 10 === 0) hud();
 }
 function frame(now: number) {
-  const dt = Math.min(0.08, (now - last) / 1000);
+  const dt = last ? Math.min(0.08, (now - last) / 1000) : STEP;
   last = now;
   if (!portrait.matches) {
     const menu = !playing && document.body.dataset.screen !== "results";
