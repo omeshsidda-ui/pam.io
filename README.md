@@ -42,9 +42,10 @@ npm ci
 npm run dev
 ```
 
-Open the URL printed by Vite. To type-check the game and preview the production build, run:
+Open the URL printed by Vite. To run the test suite, type-check and build the game, or preview the production build:
 
 ```sh
+npm test
 npm run build
 npm run preview
 ```
