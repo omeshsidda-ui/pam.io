@@ -1,6 +1,6 @@
 import "./style.css";
 import { World } from "./engine/world";
-import { STEP, CHARGE_SECONDS } from "./config";
+import { STEP, CHARGE_SECONDS, BASIC_SKIN_COUNT, skins } from "./config";
 import { draw } from "./render/renderer";
 import { profile, save, progress } from "./storage";
 import { sound } from "./audio/sfx";
@@ -308,8 +308,8 @@ function step() {
   chargeHUD();
   rank();
   if (
-    Math.floor(peakScore / 300) + 4 > profile.unlocked &&
-    profile.unlocked < 12
+    Math.floor(peakScore / 300) + BASIC_SKIN_COUNT > profile.unlocked &&
+    profile.unlocked < skins.length
   )
     progress(peakScore);
   if (world.tick % 10 === 0) hud();

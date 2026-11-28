@@ -1,4 +1,4 @@
-import { skins } from "./config";
+import { BASIC_SKIN_COUNT, skins } from "./config";
 
 const defaults = {
   name: "",
@@ -7,7 +7,7 @@ const defaults = {
   best: 0,
   kills: 0,
   mute: false,
-  unlocked: 4,
+  unlocked: BASIC_SKIN_COUNT,
   hand: "Right handed",
   control: "Joystick",
   bestKills: 0,
@@ -23,6 +23,9 @@ try {
 } catch {}
 if (!Number.isInteger(profile.skin) || profile.skin < 0 || profile.skin >= skins.length)
   profile.skin = defaults.skin;
+if (!Number.isInteger(profile.unlocked) || profile.unlocked < BASIC_SKIN_COUNT)
+  profile.unlocked = BASIC_SKIN_COUNT;
+if (profile.unlocked > skins.length) profile.unlocked = skins.length;
 
 export function save() {
   try {
@@ -32,11 +35,11 @@ export function save() {
 export function progress(score: number) {
   profile.best = Math.max(profile.best, Math.floor(score));
   profile.unlocked = Math.min(
-    12,
+    skins.length,
     Math.max(
       profile.unlocked,
-      4 + Math.floor(profile.best / 300),
-      4 + Math.floor(profile.kills / 3),
+      BASIC_SKIN_COUNT + Math.floor(profile.best / 300),
+      BASIC_SKIN_COUNT + Math.floor(profile.kills / 3),
     ),
   );
   save();

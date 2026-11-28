@@ -123,7 +123,7 @@ export class World {
           : id
             ? names[(id - 1) % names.length]
             : profile.name || "Player",
-        skin: id ? (id * 5) % 12 : profile.skin,
+        skin: id ? (id * 5) % skins.length : profile.skin,
         mass: boss ? 1500 : mass,
         a: heading,
         prevA: 0,
@@ -274,7 +274,7 @@ export class World {
     }
     this.food.push(...drops);
     callScavengers(this.snakes, drops, this.tick, this.difficulty.level);
-    for (let i = 0; i < 18; i++) this.fx(s.x, s.y, skins[s.skin][1]);
+    for (let i = 0; i < 18; i++) this.fx(s.x, s.y, skins[s.skin].primary);
     if (k) k.kills++;
     if (k === this.player) {
       profile.kills++;
@@ -484,7 +484,7 @@ export class World {
         s.mass--;
         const p = s.body.at(-1)!;
         this.food.push({ ...p, c: s.skin, loot: false, v: 1 });
-        this.fx(p.x, p.y, skins[s.skin][1]);
+        this.fx(p.x, p.y, skins[s.skin].primary);
       }
     }
     this.indexBodies();

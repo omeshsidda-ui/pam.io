@@ -1,5 +1,5 @@
 import { resolvedTheme, setAppearance } from "./theme";
-import { skins } from "./config";
+import { BASIC_SKIN_COUNT, SKIN_CATEGORIES, skins } from "./config";
 import { profile, save } from "./storage";
 import { preview, face } from "./render/spriteCache";
 export const el = (id: string) => document.getElementById(id)!;
@@ -36,14 +36,16 @@ document
 export function screen(name: string) {
   document.body.dataset.screen = name;
   el("best").textContent = profile.best.toLocaleString();
-  el("equipped").textContent = skins[profile.skin][0];
+  el("equipped").textContent = skins[profile.skin].name;
 }
 const groups: Record<string, number[]> = {
   All: skins.map((_, i) => i),
-  Basic: [0, 1, 2, 3],
-  Neon: [4, 6, 11],
-  Animals: [5, 8],
-  Rare: [7, 9, 10],
+  ...Object.fromEntries(
+    SKIN_CATEGORIES.map((cat) => [
+      cat,
+      skins.flatMap((s, i) => (s.category === cat ? [i] : [])),
+    ]),
+  ),
 };
 let category = "All",
   selected = 0;
@@ -61,21 +63,24 @@ const previewObserver = new IntersectionObserver((entries) => {
 function details() {
   const portrait = (el("skin-portrait") as HTMLCanvasElement).getContext("2d")!;
   portrait.clearRect(0, 0, 192, 192);
-  face(portrait, 97, 98, -0.34, 54, selected);
-  const level = selected - 3,
-    owned = selected < profile.unlocked;
-  el("skin-name").textContent = skins[selected][0];
-  el("condition").textContent = owned
-    ? selected === profile.skin
-      ? "Equipped"
-      : "Ready to equip"
-    : `Score ${level * 300} in one game or earn ${level * 3} total kills`;
+  face(portrait, 96, 98, -0.34, 46, selected);
+  const level = Math.max(1, selected - BASIC_SKIN_COUNT + 1),
+    owned = selected < profile.unlocked,
+    equipped = selected === profile.skin;
+  el("skin-name").textContent = skins[selected].name;
+  el("condition").textContent = equipped
+    ? "Equipped"
+    : owned
+      ? "Ready to equip"
+      : `Score ${level * 300} in one game or earn ${level * 3} total kills`;
   const bar = el("milestone") as HTMLProgressElement;
-  bar.value = owned
+  bar.value = owned || equipped
     ? 1
-    : Math.max(profile.best / (level * 300), profile.kills / (level * 3));
+    : Math.min(1, Math.max(profile.best / (level * 300), profile.kills / (level * 3)));
   bar.setAttribute("aria-label", "Unlock progress");
-  (el("use") as HTMLButtonElement).disabled = !owned;
+  const use = el("use") as HTMLButtonElement;
+  use.textContent = equipped ? "EQUIPPED" : owned ? "USE" : "LOCKED";
+  use.disabled = equipped || !owned;
   for (const [canvas, id] of previews)
     canvas.parentElement!.setAttribute("aria-pressed", String(id === selected));
 }
@@ -103,21 +108,29 @@ function showShop() {
   }
   for (const id of groups[category]) {
     const btn = document.createElement("button");
+    const equipped = id === profile.skin;
     btn.className = "skin-card";
     const canvas = document.createElement("canvas");
     canvas.width = 480;
     canvas.height = 1140;
     previews.set(canvas, id);
     btn.append(canvas);
-    if (id >= profile.unlocked) {
+    if (!equipped && id >= profile.unlocked) {
       const lock = document.createElement("i");
       lock.className = "lock";
       lock.innerHTML = icon("lock");
       btn.append(lock);
     }
     const name = document.createElement("strong");
-    name.textContent = skins[id][0];
+    name.textContent = skins[id].name;
     btn.append(name);
+    if (equipped) {
+      btn.dataset.equipped = "true";
+      const badge = document.createElement("span");
+      badge.className = "equipped-badge";
+      badge.textContent = "Equipped";
+      btn.append(badge);
+    }
     btn.onclick = () => {
       selected = id;
       details();
@@ -138,7 +151,8 @@ el("skins").onclick = el("change").onclick = () => {
   category = "All";
   showShop();
   screen("shop");
-  el("cards").children[selected]?.scrollIntoView({ inline: "nearest" });
+  const idx = groups[category].indexOf(selected);
+  if (idx >= 0) el("cards").children[idx]?.scrollIntoView({ inline: "nearest" });
 };
 el("use").onclick = () => {
   profile.skin = selected;

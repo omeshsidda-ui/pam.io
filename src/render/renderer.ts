@@ -9,13 +9,13 @@ import {
 } from "../engine/camera";
 import { width } from "../engine/physics";
 import {
-  beads,
+  segment,
+  segmentRadius,
   atSize,
   orbs,
   crown,
   face,
   shadow,
-  marking,
   boostWake,
 } from "./spriteCache";
 import { ArenaResolution } from "./resolution";
@@ -130,8 +130,7 @@ function snake(s: Snake, f: number, leader = false) {
   const r = width(s),
     n = s.body.length;
   const pixelScale = c.getTransform().a;
-  const light = atSize(beads[s.skin][0], 2 * r * pixelScale);
-  const dark = atSize(beads[s.skin][1], 2 * r * pixelScale);
+  const heading = s.prevA + angleDiff(s.a, s.prevA) * f;
   for (let pass = 0; pass < 2; pass++) {
     for (let i = n - 1; i >= 0; i--) {
       const p = s.body[i],
@@ -139,13 +138,15 @@ function snake(s: Snake, f: number, leader = false) {
         x = o.x + (p.x - o.x) * f,
         y = o.y + (p.y - o.y) * f;
       if (visible(x, y)) {
+        const tail = i === n - 1;
+        const drawRadius = i === 0 ? r : segmentRadius(r, n - 1 - i);
         if (pass === 0) {
           if (s.boost && i === 0) {
             c.save();
             c.translate(x, y);
-            c.rotate(s.prevA + angleDiff(s.a, s.prevA) * f);
+            c.rotate(heading);
             c.drawImage(
-              boostWake[s.skin],
+              atSize(boostWake[s.skin], r * 4.6 * pixelScale),
               -r * 4.1,
               -r * 1.9,
               r * 4.6,
@@ -153,17 +154,31 @@ function snake(s: Snake, f: number, leader = false) {
             );
             c.restore();
           }
-          if (i % 2 === 0)
-            c.drawImage(shadow, x - r * 1.4, y - r * 0.96, r * 2.8, r * 2.8);
+          if (i % 2 === 0) {
+            const shadowRadius = tail ? segmentRadius(r, 1) : drawRadius;
+            c.drawImage(
+              shadow,
+              x - shadowRadius * 1.4,
+              y - shadowRadius * 0.96,
+              shadowRadius * 2.8,
+              shadowRadius * 2.8,
+            );
+          }
         } else {
-          const img = Math.floor(i / 4) % 2 ? dark : light;
-          c.drawImage(img, x - r, y - r, 2 * r, 2 * r);
+          let tangent = heading;
+          if (i > 0) {
+            const ahead = s.body[i - 1], prev = s.old[i - 1];
+            const dx = prev.x + (ahead.x - prev.x) * f - x;
+            const dy = prev.y + (ahead.y - prev.y) * f - y;
+            if (dx || dy) tangent = Math.atan2(dy, dx);
+          }
+          segment(c, s.skin, i, tail, x, y, tangent, drawRadius, pixelScale);
           if (!i) {
             face(
               c,
               x,
               y,
-              s.prevA + angleDiff(s.a, s.prevA) * f,
+              heading,
               r,
               s.skin,
               angleDiff(s.aim, s.a),
@@ -179,25 +194,6 @@ function snake(s: Snake, f: number, leader = false) {
         }
       }
     }
-  }
-  for (let i = 4; i < n - 5; i += 5) {
-    const p = s.body[i],
-      o = s.old[i],
-      x = o.x + (p.x - o.x) * f,
-      y = o.y + (p.y - o.y) * f;
-    if (!visible(x, y)) continue;
-    const ahead = s.body[i - 1];
-    marking(
-      c,
-      s.skin,
-      x,
-      y,
-      Math.atan2(
-        s.old[i - 1].y + (ahead.y - s.old[i - 1].y) * f - y,
-        s.old[i - 1].x + (ahead.x - s.old[i - 1].x) * f - x,
-      ),
-      r * 0.87,
-    );
   }
 }
 export function draw(
